@@ -1,0 +1,23 @@
+!<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      {% if title %}
+        {{ title }}
+      {% else %}
+        {{ meta.sitename }}
+      {% endif %}
+    </title>
+
+    <base href="{{ page.url }}" />
+  </head>
+  <body cladd="{{ layout }}">
+    {% include partials/header.njk %}
+
+    <main id="main" class="flow">{{ content | safe }}</main>
+
+    {% include partials/footer.njk %}
+  </body>
+</html>
