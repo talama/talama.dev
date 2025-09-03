@@ -1,0 +1,21 @@
+{
+  "name": "talama.dev",
+  "version": "1.0.0",
+  "description": "talama.dev",
+  "scripts": {
+    "start": "pnpm exec eleventy --serve",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "type": "module",
+  "keywords": [],
+  "author": "talama@proton.me",
+  "license": "MIT",
+  "packageManager": "pnpm@10.15.1",
+  "devDependencies": {
+    "stylelint": "^16.23.1",
+    "stylelint-config-clean-order": "^7.0.0",
+    "stylelint-declaration-block-no-ignored-properties": "^2.8.0",
+    "stylelint-use-logical-spec": "^5.0.1"
+  }
+}
