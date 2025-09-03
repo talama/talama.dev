@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "talama.dev",
   "scripts": {
-    "start": "pnpm exec eleventy --serve",
+    "dev": "pnpm exec @11ty/eleventy --serve",
+    "build": "pnpm exec @11ty/eleventy",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
