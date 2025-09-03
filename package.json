@@ -13,6 +13,8 @@
   "license": "MIT",
   "packageManager": "pnpm@10.15.1",
   "devDependencies": {
+    "@11ty/eleventy": "^3.1.2",
+    "@11ty/eleventy-plugin-syntaxhighlight": "^5.0.2",
     "stylelint": "^16.23.1",
     "stylelint-config-clean-order": "^7.0.0",
     "stylelint-declaration-block-no-ignored-properties": "^2.8.0",
