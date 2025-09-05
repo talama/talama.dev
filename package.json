@@ -1,33 +1,5 @@
 {
   "name": "talama.dev",
-<<<<<<< HEAD
-  "version": "1.0.0",
-  "description": "talama.dev",
-  "scripts": {
-    "dev": "pnpm exec @11ty/eleventy --serve",
-    "build": "pnpm exec @11ty/eleventy",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
-  },
-  "type": "module",
-  "keywords": [],
-  "author": "talama@proton.me",
-  "license": "MIT",
-  "packageManager": "pnpm@10.15.1",
-  "devDependencies": {
-    "@11ty/eleventy": "^3.1.2",
-    "@11ty/eleventy-plugin-syntaxhighlight": "^5.0.2",
-    "@eslint/js": "^9.34.0",
-    "eslint": "^9.34.0",
-    "globals": "^16.3.0",
-    "prettier-plugin-jinja-template": "^2.1.0",
-    "stylelint": "^16.23.1",
-    "stylelint-config-clean-order": "^7.0.0",
-    "stylelint-declaration-block-no-ignored-properties": "^2.8.0",
-    "stylelint-use-logical-spec": "^5.0.1"
-  }
-}
-=======
   "type": "module",
   "version": "5.5.0",
   "scripts": {
@@ -72,4 +44,3 @@
     "typescript-eslint": "^8.36.0"
   }
 }
->>>>>>> 3c45e98 (Initial commit from Astro)

@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-# Talama.dev
-
-The official Github repository for dev blog [Talama.dev](https://talama.dev/).
-=======
 # AstroPaper 📄
 
 ![AstroPaper](public/astropaper-og.jpg)
@@ -183,4 +178,3 @@ Licensed under the MIT License, Copyright © 2025
 ---
 
 Made with 🤍 by [Sat Naing](https://satnaing.dev) 👨🏻‍💻 and [contributors](https://github.com/satnaing/astro-paper/graphs/contributors).
->>>>>>> 3c45e98 (Initial commit from Astro)

@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-dist/
-node_modules
-=======
 # Ignore everything
 /*
 
@@ -16,4 +12,3 @@ node_modules
 !.prettierrc
 !eslint.config.js
 !README.md
->>>>>>> 3c45e98 (Initial commit from Astro)
