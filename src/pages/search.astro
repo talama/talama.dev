@@ -26,7 +26,7 @@ const backUrl = SITE.showBackButton ? `${Astro.url.pathname}` : "/";
 
     const params = new URLSearchParams(window.location.search);
 
-    const onIdle = window.requestIdleCallback || (cb => setTimeout(cb, 1));
+    const onIdle = window.requestIdleCallback || ((cb) => setTimeout(cb, 1));
 
     onIdle(async () => {
       // @ts-expect-error — Missing types for @pagefind/default-ui package.

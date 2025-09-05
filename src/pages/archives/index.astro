@@ -36,7 +36,7 @@ const months = [
   <Main pageTitle="Archives" pageDesc="All the articles I've archived.">
     {
       Object.entries(
-        getPostsByGroupCondition(posts, post =>
+        getPostsByGroupCondition(posts, (post) =>
           post.data.pubDatetime.getFullYear()
         )
       )
@@ -48,7 +48,7 @@ const months = [
             {Object.entries(
               getPostsByGroupCondition(
                 yearGroup,
-                post => post.data.pubDatetime.getMonth() + 1
+                (post) => post.data.pubDatetime.getMonth() + 1
               )
             )
               .sort(([monthA], [monthB]) => Number(monthB) - Number(monthA))
@@ -69,7 +69,7 @@ const months = [
                             new Date(a.data.pubDatetime).getTime() / 1000
                           )
                       )
-                      .map(data => (
+                      .map((data) => (
                         <Card {...data} />
                       ))}
                   </ul>
