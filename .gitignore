@@ -1,10 +1,19 @@
+<<<<<<< HEAD
 dist
 tmp
 /out-tsc
+=======
+# build output
+dist/
+
+# generated types
+.astro/
+>>>>>>> 3c45e98 (Initial commit from Astro)
 
 # dependencies
 node_modules/
 
+<<<<<<< HEAD
 # IDEs and editors
 /.idea
 .project
@@ -35,3 +44,24 @@ Thumbs.db
 
 .nx/cache
 .nx/workspace-data
+=======
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# environment variables
+.env
+.env.production
+
+# macOS-specific files
+.DS_Store
+
+# jetbrains setting folder
+.idea/
+
+# pagefind
+
+public/pagefind
+>>>>>>> 3c45e98 (Initial commit from Astro)

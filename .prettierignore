@@ -1,2 +1,19 @@
+<<<<<<< HEAD
 dist/
 node_modules
+=======
+# Ignore everything
+/*
+
+# Except these files & folders
+!/src
+!/public
+!/.github
+!tsconfig.json
+!astro.config.ts
+!.prettierrc.mjs
+!package.json
+!.prettierrc
+!eslint.config.js
+!README.md
+>>>>>>> 3c45e98 (Initial commit from Astro)
