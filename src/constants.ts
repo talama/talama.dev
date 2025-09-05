@@ -2,7 +2,7 @@ import type { Props } from "astro";
 import IconMail from "@/assets/icons/IconMail.svg";
 import IconGitHub from "@/assets/icons/IconGitHub.svg";
 import IconBrandX from "@/assets/icons/IconBrandX.svg";
-import IconLinkedin from "@/assets/icons/IconLinkedin.svg";
+import IconBlueSky from "@/assets/icons/IconBlueSky.svg";
 import IconWhatsapp from "@/assets/icons/IconWhatsapp.svg";
 import IconFacebook from "@/assets/icons/IconFacebook.svg";
 import IconTelegram from "@/assets/icons/IconTelegram.svg";
@@ -19,25 +19,19 @@ interface Social {
 export const SOCIALS: Social[] = [
   {
     name: "GitHub",
-    href: "https://github.com/satnaing/astro-paper",
-    linkTitle: `${SITE.title} on GitHub`,
+    href: "https://github.com/talama",
+    linkTitle: `Luca Salomoni on GitHub`,
     icon: IconGitHub,
   },
   {
     name: "X",
-    href: "https://x.com/username",
-    linkTitle: `${SITE.title} on X`,
-    icon: IconBrandX,
-  },
-  {
-    name: "LinkedIn",
-    href: "https://www.linkedin.com/in/username/",
-    linkTitle: `${SITE.title} on LinkedIn`,
-    icon: IconLinkedin,
+    href: "https://talama.bsky.social",
+    linkTitle: `Talama on X`,
+    icon: IconBlueSky,
   },
   {
     name: "Mail",
-    href: "mailto:yourmail@gmail.com",
+    href: "mailto:talama@talama.dev",
     linkTitle: `Send an email to ${SITE.title}`,
     icon: IconMail,
   },
@@ -61,6 +55,12 @@ export const SHARE_LINKS: Social[] = [
     href: "https://x.com/intent/post?url=",
     linkTitle: `Share this post on X`,
     icon: IconBrandX,
+  },
+  {
+    name: "BlueSky",
+    href: "https://bsky.app/intent/compose?text=",
+    linkTitle: `Share this post on BlueSky`,
+    icon: IconBlueSky,
   },
   {
     name: "Telegram",
