@@ -13,6 +13,8 @@ export const SITE = {
   showBackButton: true, // show back button in post detail
   editPost: {
     enabled: false,
+    text: "Edit page",
+    url: "https://github.com/talama/talama.dev/edit/main",
   },
   dynamicOgImage: true,
   dir: "ltr", // "rtl" | "auto"
