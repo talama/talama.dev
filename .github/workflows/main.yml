@@ -25,7 +25,6 @@ jobs:
         with:
           context: .
           push: true
-          platforms: linux/arm64
           tags: |
             ghcr.io/${{ github.repository_owner }}/talama.dev:latest
             ghcr.io/${{ github.repository_owner }}/astro-blog:${{ github.sha }}
