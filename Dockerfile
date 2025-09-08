@@ -13,5 +13,5 @@ RUN pnpm run build
 
 # --- Production stage ---
 FROM caddy:alpine
-COPY --from=builder /app/dist /usr/share/caddy
+COPY --from=builder /app/dist /var/www/talama.dev
 COPY Caddyfile /etc/caddy/Caddyfile
