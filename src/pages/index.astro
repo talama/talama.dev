@@ -12,6 +12,8 @@ import IconRss from "@/assets/icons/IconRss.svg";
 import IconArrowRight from "@/assets/icons/IconArrowRight.svg";
 import { SITE } from "@/config";
 import { SOCIALS } from "@/constants";
+import { _t } from "@/i18n/lang";
+import getDescription from "@/utils/getDescription";
 
 const posts = await getCollection("blog");
 
@@ -37,13 +39,14 @@ const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
         <IconRss
           width={20}
           height={20}
-          class="scale-125 stroke-accent stroke-3 rtl:-rotate-90"
+          class="scale-125 stroke-accent stroke-3"
         />
         <span class="sr-only">RSS Feed</span>
       </a>
 
       <p>
-        Welcome to my blog! I'm Luca, and here is where I share my thoughts and
+
+Welcome to my blog! My name is Luca, and here is where I share my thoughts and
         ideas about what I found interesting or about new things I learn. These
         days I'm mostly focusing on networking and Python. I hope you'll find
         something useful here, or at least something to spark your curiosity!
@@ -52,7 +55,7 @@ const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
         // only display if at least one social link is enabled
         SOCIALS.length > 0 && (
           <div class="mt-4 flex flex-col sm:flex-row sm:items-center">
-            <div class="me-2 mb-1 whitespace-nowrap sm:mb-0">Social Links:</div>
+            <div class="mr-2 mb-1 whitespace-nowrap sm:mb-0">Social Links:</div>
             <Socials />
           </div>
         )
@@ -65,10 +68,16 @@ const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
       featuredPosts.length > 0 && (
         <>
           <section id="featured" class="pt-12 pb-6">
-            <h2 class="text-2xl font-semibold tracking-wide">Featured</h2>
+            <h2 class="text-3xl font-semibold tracking-wide">
+              {_t.common.featuredPosts}
+            </h2>
             <ul>
-              {featuredPosts.map((data) => (
-                <Card variant="h3" {...data} />
+              {featuredPosts.map(data => (
+                <Card
+                  variant="h3"
+                  {...data}
+                  fallbackDesc={getDescription(data.body || "")}
+                />
               ))}
             </ul>
           </section>
@@ -80,11 +89,19 @@ const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
     {
       recentPosts.length > 0 && (
         <section id="recent-posts" class="pt-12 pb-6">
-          <h2 class="text-2xl font-semibold tracking-wide">Recent Posts</h2>
+          <h2 class="text-3xl font-semibold tracking-wide">
+            {_t.common.recentPosts}
+          </h2>
           <ul>
             {recentPosts.map(
               (data, index) =>
-                index < SITE.postPerIndex && <Card variant="h3" {...data} />
+                index < SITE.postPerIndex && (
+                  <Card
+                    variant="h3"
+                    {...data}
+                    fallbackDesc={getDescription(data.body || "")}
+                  />
+                )
             )}
           </ul>
         </section>
@@ -92,9 +109,9 @@ const recentPosts = sortedPosts.filter(({ data }) => !data.featured);
     }
 
     <div class="my-8 text-center">
-      <LinkButton href="/posts/">
-        All Posts
-        <IconArrowRight class="inline-block rtl:-rotate-180" />
+      <LinkButton href="/posts">
+        {_t.common.allPosts}
+        <IconArrowRight class="inline-block" />
       </LinkButton>
     </div>
   </main>

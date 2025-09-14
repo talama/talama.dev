@@ -1,6 +1,6 @@
 /** @type {import("prettier").Config} */
 export default {
-  arrowParens: "always",
+  arrowParens: "avoid",
   semi: true,
   tabWidth: 2,
   printWidth: 80,
