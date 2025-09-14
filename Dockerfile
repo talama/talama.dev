@@ -1,13 +1,11 @@
-# Base stage for building the static files
+# --- Build stage ---
 FROM node:20-slim AS builder
+RUN corepack enable
+
 WORKDIR /app
-
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
 
+RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm run build
 

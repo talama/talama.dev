@@ -13,4 +13,3 @@ __tests__
 docker-compose*.yml
 .env
 .env.*
-*.astro
