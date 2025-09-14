@@ -1,5 +1,5 @@
 # Base stage for building the static files
-FROM node:lts AS base
+FROM node:20-slim AS builder
 WORKDIR /app
 
 # Install pnpm
@@ -11,7 +11,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm run build
 
-# Runtime stage for serving the application
-FROM nginx:mainline-alpine-slim AS runtime
-COPY --from=base /app/dist /usr/share/nginx/html
-EXPOSE 80
+# --- Production stage ---
+FROM caddy:alpine
+COPY --from=builder /app/dist /var/www/talama.dev
+COPY Caddyfile /etc/caddy/Caddyfile
