@@ -42,7 +42,7 @@ const title = _t.date.published(
       { "scale-90": size === "sm" },
     ]}
   /> -->
-  <span class:list={["text-sm", { "sm:text-base": true }]}>
+  <span class:list={["text-sm", { "sm:text-base": false }]}>
     <time datetime={datetime.toISOString()}>
       {
         isModified && size === "lg"
