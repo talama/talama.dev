@@ -1,5 +1,5 @@
 {
-	"extends": ["stylelint-config-clean-order", "stylelint-config-html"],
+	"extends": ["stylelint-config-clean-order"],
 	"plugins": [
 		"stylelint-declaration-block-no-ignored-properties",
 		"stylelint-use-logical-spec"
