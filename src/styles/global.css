@@ -1,5 +1,6 @@
 @import "@fontsource/atkinson-hyperlegible";
 @import "@fontsource-variable/red-hat-text";
+@import "@fontsource-variable/jetbrains-mono";
 @import "tailwindcss";
 @import "./typography.css";
 
@@ -73,7 +74,6 @@ html[data-theme="dark"] {
   h6 {
     font-family: var(--font-headers);
   }
-
   a,
   button {
     @apply outline-offset-1 outline-accent focus-visible:no-underline focus-visible:outline-2;
