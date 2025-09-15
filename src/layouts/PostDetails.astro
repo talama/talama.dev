@@ -13,7 +13,7 @@ import { getPath } from "@/utils/getPath";
 import { slugifyStr } from "@/utils/slugify";
 import IconChevronLeft from "@/assets/icons/IconChevronLeft.svg";
 import IconChevronRight from "@/assets/icons/IconChevronRight.svg";
-import IconChevronUp from "@/assets/icons/IconChevronUp.svg";
+/* import IconChevronUp from "@/assets/icons/IconChevronUp.svg"; */
 import IconCategory from "@/assets/icons/IconCategory.svg";
 import IconMenuSidebar from "@/assets/icons/IconMenuSidebar.svg";
 import IconTag from "@/assets/icons/IconTag.svg";
@@ -246,26 +246,26 @@ const nextPost =
 
   <!-- Sidebar -->
   <aside id="sidebar" class="sidebar">
-    {
-      toc && (
-        <>
-          <div id="toc-container" class="js-toc" />
-          <hr class="my-4 opacity-80" aria-hidden={true} />
-        </>
-      )
-    }
-    <div
-      class="flex flex-col items-start space-y-0 truncate overflow-hidden whitespace-nowrap opacity-80"
-    >
-      <button
-        id="back-to-top"
-        aria-label={_t.common.backToTop}
-        class="focus-outline py-1 whitespace-nowrap hover:opacity-75"
-      >
-        <IconChevronUp class="inline-block" />
-        <span class="text-sm">{_t.common.backToTop}</span>
-      </button>
-    </div>
+    <!-- { -->
+    <!--   toc && ( -->
+    <!--     <> -->
+    <!--       <div id="toc-container" class="js-toc" /> -->
+    <!--       <hr class="my-4 opacity-80" aria-hidden={true} /> -->
+    <!--     </> -->
+    <!--   ) -->
+    <!-- } -->
+    <!-- <div -->
+    <!--   class="flex flex-col items-start space-y-0 truncate overflow-hidden whitespace-nowrap opacity-80" -->
+    <!-- > -->
+    <!--   <button -->
+    <!--     id="back-to-top" -->
+    <!--     aria-label={_t.common.backToTop} -->
+    <!--     class="focus-outline py-1 whitespace-nowrap hover:opacity-75" -->
+    <!--   > -->
+    <!--     <IconChevronUp class="inline-block" /> -->
+    <!--     <span class="text-sm">{_t.common.backToTop}</span> -->
+    <!--   </button> -->
+    <!-- </div> -->
   </aside>
 
   {
