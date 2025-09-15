@@ -17,6 +17,9 @@ importers:
       '@expressive-code/plugin-line-numbers':
         specifier: ^0.41.2
         version: 0.41.2
+      '@fontsource-variable/jetbrains-mono':
+        specifier: ^5.2.7
+        version: 5.2.7
       '@fontsource-variable/red-hat-text':
         specifier: ^5.2.7
         version: 5.2.7
@@ -488,6 +491,9 @@ packages:
 
   '@expressive-code/plugin-text-markers@0.41.2':
     resolution: {integrity: sha512-JFWBz2qYxxJOJkkWf96LpeolbnOqJY95TvwYc0hXIHf9oSWV0h0SY268w/5N3EtQaD9KktzDE+VIVwb9jdb3nw==}
+
+  '@fontsource-variable/jetbrains-mono@5.2.7':
+    resolution: {integrity: sha512-vwU6O4wv1h1BvEJUWaylorj0WZ3+GB3uVsgUH7IpGX/euSXm0UyTu6MWusk1pph562F8cBvuv41P4jufRogF4Q==}
 
   '@fontsource-variable/red-hat-text@5.2.7':
     resolution: {integrity: sha512-SeCePphTnz468v/p2jMZzG5ot2ovc/zSvA2xquJ35kiez/gPuWGhgC2Jl2aNzAqmMvLrWYy4m34Uhxt8JkhV6A==}
@@ -3920,6 +3926,8 @@ snapshots:
   '@expressive-code/plugin-text-markers@0.41.2':
     dependencies:
       '@expressive-code/core': 0.41.2
+
+  '@fontsource-variable/jetbrains-mono@5.2.7': {}
 
   '@fontsource-variable/red-hat-text@5.2.7': {}
 
