@@ -1,6 +1,5 @@
 import { SITE } from "./src/config";
 import { defineConfig } from "astro/config";
-import fs from "node:fs";
 import tailwindcss from "@tailwindcss/vite";
 import sitemap, { type SitemapOptions } from "@astrojs/sitemap";
 import remarkMath from "remark-math";
@@ -15,25 +14,17 @@ import rehypeWrapAll from "rehype-wrap-all";
 import rehypeExternalLinks from "rehype-external-links";
 import rehypeImgSizeCache from "@ziteh/rehype-img-size-cache";
 import expressiveCode, {
-  ExpressiveCodeTheme,
   type AstroExpressiveCodeOptions,
 } from "astro-expressive-code";
 import { pluginLineNumbers } from "@expressive-code/plugin-line-numbers";
 import compressor from "astro-compressor";
 
-// Import custom theme
-const themeJsoncString = fs.readFileSync(
-  new URL("./theme/mod-min-light.jsonc", import.meta.url),
-  "utf-8"
-);
-const modMinLightTheme = ExpressiveCodeTheme.fromJSONString(themeJsoncString);
-
 // Expressive Code syntax highlighting, https://expressive-code.com/reference/configuration/
 const expressiveCodeOption: AstroExpressiveCodeOptions = {
   plugins: [pluginLineNumbers()],
-  themes: ["one-dark-pro", modMinLightTheme],
+  themes: ["catppuccin-mocha", "catppuccin-latte"],
   themeCssSelector: theme => {
-    if (theme.name === "one-dark-pro") {
+    if (theme.name === "catppuccin-mocha") {
       return "[data-theme='dark']";
     }
     return "[data-theme='light']";
@@ -48,7 +39,9 @@ const expressiveCodeOption: AstroExpressiveCodeOptions = {
   styleOverrides: {
     codeFontFamily: "var(--font-mono), var(--font-emoji)",
     uiFontFamily: "var(--font-sans), var(--font-emoji)",
+    codeFontSize: "1rem",
     borderWidth: "0",
+    borderRadius: "1rem",
     textMarkers: {
       backgroundOpacity: "33%",
       inlineMarkerBorderWidth: "0.1px",
