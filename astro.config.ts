@@ -4,7 +4,9 @@ import fs from "node:fs";
 import tailwindcss from "@tailwindcss/vite";
 import sitemap, { type SitemapOptions } from "@astrojs/sitemap";
 import remarkMath from "remark-math";
+import remarkToc from "remark-toc";
 import rehypeKatex from "rehype-katex";
+import remarkCollapse from "remark-collapse";
 import rehypeFigure from "@microflash/rehype-figure";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeSlug from "rehype-slug";
@@ -123,7 +125,11 @@ export default defineConfig({
     compressor({ gzip: true, brotli: true }),
   ],
   markdown: {
-    remarkPlugins: [remarkMath],
+    remarkPlugins: [
+      remarkMath,
+      remarkToc,
+      // [remarkCollapse, { test: "Table of contents" }],
+    ],
     rehypePlugins: [
       rehypeKatex,
       rehypeFigure,
