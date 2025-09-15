@@ -1,3 +1,5 @@
+@import "@fontsource/atkinson-hyperlegible";
+@import "@fontsource-variable/red-hat-text";
 @import "tailwindcss";
 @import "./typography.css";
 
@@ -5,7 +7,8 @@
 
 :root {
   --font-sans: "Atkinson Hyperlegible", "Noto Sans", "Noto Sans TC", sans-serif;
-  --font-mono: "ui-monospace", "Roboto Mono", "Noto Sans TC", monospace;
+  --font-headers: "Red Hat Text Variable", sans-serif;
+  --font-mono: "Roboto Mono", "Noto Sans TC", monospace;
   --font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
 
   /* Wonton comment */
@@ -44,21 +47,33 @@ html[data-theme="dark"] {
 @layer base {
   * {
     @apply border-border outline-accent/75;
-    scrollbar-width: auto;
+
     scrollbar-color: color-mix(
         in srgb,
         var(--color-muted) 80%,
         var(--color-foreground) 20%
       )
       transparent;
+    scrollbar-width: auto;
   }
   html {
     @apply overflow-y-scroll scroll-smooth;
   }
   body {
     @apply flex min-h-svh flex-col bg-background font-sans text-foreground selection:bg-accent/75 selection:text-background;
+
     font-family: var(--font-sans), var(--font-emoji);
   }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-headers);
+  }
+
   a,
   button {
     @apply outline-offset-1 outline-accent focus-visible:no-underline focus-visible:outline-2;
@@ -80,6 +95,40 @@ html[data-theme="dark"] {
 @layer utilities {
   #sidebar {
     @apply fixed z-40 transform overflow-y-auto bg-background text-sm;
+  }
+
+  /* tocbot */
+  .toc-list-item {
+    @apply truncate overflow-hidden whitespace-nowrap text-foreground/80;
+  }
+  .toc-link.is-active-link {
+    @apply !text-accent;
+  }
+  .toc-link::before {
+    @apply !hidden;
+
+    content: "";
+  }
+
+  /* rehype-autolink-headings */
+  .icon-link::before {
+    @apply ml-1 inline-block text-accent !no-underline opacity-0 transition-opacity duration-200;
+
+    content: "#";
+  }
+
+  h1:hover .icon-link::before,
+  h2:hover .icon-link::before,
+  h3:hover .icon-link::before,
+  h4:hover .icon-link::before,
+  h5:hover .icon-link::before,
+  h6:hover .icon-link::before {
+    @apply opacity-100;
+  }
+
+  /* Code blocks */
+  .expressive-code {
+    @apply mt-2 mb-4;
   }
 
   /* Mobile styles */
@@ -114,41 +163,9 @@ html[data-theme="dark"] {
     }
   }
 
-  /* tocbot */
-  .toc-list-item {
-    @apply truncate overflow-hidden whitespace-nowrap text-foreground/80;
-  }
-  .toc-link.is-active-link {
-    @apply !text-accent;
-  }
-  .toc-link::before {
-    @apply !hidden;
-    content: "";
-  }
-
   @media (max-width: 1023px) {
     .toc-list-item {
       @apply my-4;
     }
-  }
-
-  /* rehype-autolink-headings */
-  .icon-link::before {
-    @apply ml-1 inline-block text-accent !no-underline opacity-0 transition-opacity duration-200;
-    content: "#";
-  }
-
-  h1:hover .icon-link::before,
-  h2:hover .icon-link::before,
-  h3:hover .icon-link::before,
-  h4:hover .icon-link::before,
-  h5:hover .icon-link::before,
-  h6:hover .icon-link::before {
-    @apply opacity-100;
-  }
-
-  /* Code blocks */
-  .expressive-code {
-    @apply mt-2 mb-4;
   }
 }
