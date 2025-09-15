@@ -1,6 +1,8 @@
 :8080 {
   root * /var/www/talama.dev
-  file_server
 
-  try_files {path.html}.html {path} /
+  # Handle clean URLs - try the path, then with .html extension
+  try_files {path} {path}.html {path}/index.html
+
+  file_server
 }
