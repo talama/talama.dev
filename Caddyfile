@@ -1,4 +1,6 @@
 :8080 {
   root * /var/www/talama.dev
   file_server
+
+  try_files {path.html}.html {path} /
 }
