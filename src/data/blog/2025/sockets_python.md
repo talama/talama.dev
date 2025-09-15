@@ -13,6 +13,8 @@ description: Learning about sockets by programming simple client/server code wit
 In this post we will look at what sockets are and how we can use them to communicate over the internet
 by writing some simple client/server code in Python.
 
+## Table of contents
+
 ## Sockets, a definition and a little bit of history
 
 So, first of all, what is a socket? Soket are a form of IPC (inter process communication) that gives processes
