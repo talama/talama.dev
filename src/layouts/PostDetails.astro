@@ -104,7 +104,7 @@ const nextPost =
   <main
     id="main-content"
     class:list={[
-      "mx-auto w-full max-w-2xl px-4 pb-32 xl:max-w-3xl",
+      "mx-auto w-full max-w-2xl px-4 pb-10 xl:max-w-3xl",
       { "mt-8": !SITE.showBackButton },
     ]}
     data-pagefind-body
@@ -207,7 +207,7 @@ const nextPost =
             <IconChevronLeft class="inline-block flex-none" />
             <div>
               {/* <span>Previous Post</span> */}
-              <div class="text-sm text-accent/85">{prevPost.title}</div>
+              <div class="text-base text-accent/85">{prevPost.title}</div>
             </div>
           </a>
         )
@@ -220,7 +220,7 @@ const nextPost =
           >
             <div>
               {/* <span>Next Post</span> */}
-              <div class="text-sm text-accent/85">{nextPost.title}</div>
+              <div class="text-base text-accent/85">{nextPost.title}</div>
             </div>
             <IconChevronRight class="inline-block flex-none" />
           </a>
