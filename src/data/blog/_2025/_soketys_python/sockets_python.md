@@ -763,13 +763,13 @@ Currently HTTP/1.1 is defined by:
 - [RFC 9110 - HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110.html)
 - [RFC 9111 - HTTP Caching](https://www.rfc-editor.org/rfc/rfc9110.html)
 
-Not the easiast read, but very intersting. Fortunately we are interested in a **very** small subset of the
+Not the easiest read, but very interesting. Fortunately we only need **very** small subset of the
 information contained there (at least for now). And we are not going to reference the caching RFC at all.
 
-The syntax of the messages id defined in **RFC 9112**, while the **semantics of methods, status codes, and header files**
+The syntax of the messages is defined in **RFC 9112**, while the **semantics of methods, status codes, and header files**
 are defined separately in **RFC 9110**.
 
-At its simplest, a request has this structure [RFC 9112, §2.1](https://www.rfc-editor.org/rfc/rfc9112.html#name-message-format):
+At its simplest, a request has this structure ( [RFC 9112, Section 2.1](https://www.rfc-editor.org/rfc/rfc9112.html#name-message-format) ):
 
 ```bash
   HTTP-message   = start-line CRLF
@@ -782,10 +782,10 @@ where `start-line` can be either a `request-line` or a `status-line` depending i
 `*( field-line CRLF )` is **zero or more** header field lines, `CRLF` is an empty line (Carriage return + Line feed `\r\n`) and
 `[message-body]` is an **optional** message body.
 
-A `request line` [RFC 9112, §3](https://www.rfc-editor.org/rfc/rfc9112.html#name-request-line) is defined as
+A `request line` ( [RFC 9112, Section 3](https://www.rfc-editor.org/rfc/rfc9112.html#name-request-line) ) is defined as
 `Method request-target HTTP-version`.
 
-In our case the `Method` will be **GET** since we want to *get* the home page, the `request-target` will be `/` (the top level resource of the server)
+In our case the `Method` will be **GET** since we want to *get* the home page, the `request-target` will be `/` (the top level entry point, the "document root")
 and `HTTP-version` will be **HTTP/1.1**.
 
 So our request line is:
@@ -794,7 +794,7 @@ So our request line is:
 GET / HTTP/1.1\r\n
 ```
 
-What about the header field lines? [RFC 9112, §3.2](https://www.rfc-editor.org/rfc/rfc9112.html#name-request-target) says:
+What about the header field lines? ( [RFC 9112, Section 3.2](https://www.rfc-editor.org/rfc/rfc9112.html#name-request-target) ) says:
 
 > A client MUST send a Host header field (Section 7.2 of [HTTP](https://www.rfc-editor.org/rfc/rfc9110#section-7.2)) in all HTTP/1.1 request messages.
 
@@ -811,7 +811,7 @@ Notice that if we intend to close the connection on the client side after we rec
 Connection: close\r\n
 ```
 
-header, or the server might keep the connection open since **HTTP/1.1** defaults to the use of *persistent connections* allowing multiple requests and responses to be carried over a single connection. [RFC 9112, §9.3](https://www.rfc-editor.org/rfc/rfc9112.html#name-persistence).
+header, or the server might keep the connection open since **HTTP/1.1** defaults to the use of *persistent connections* allowing multiple requests and responses to be carried over a single connection. ( [RFC 9112, Section 9.3](https://www.rfc-editor.org/rfc/rfc9112.html#name-persistence) ).
 
 Which brings us to the final version of our very first HTTP "sentence":
 
@@ -914,6 +914,153 @@ X-N: S
 
 Success!! (kinda).
 
-We received a meaninful response because we made meaningful reques.
+We received a meaningful response because we made meaningful request.
 Too bad we only got the first **1024** bytes of it...
+
+How do we read the full response? Well we sent `Connection: close` as header in our request,
+so we know the server is going to send a response and then close the connection.
+So we can simply just read **chunks** of **bufsize** until the server closes the connection and
+sends **0 bytes** (`b""`).
+
+Its not perfect, but it works in this case and its easy to implement:
+
+```python {27-34}
+// file: simple_client.py
+import socket
+
+from utils.logger import get_logger
+
+logger = get_logger("client")
+
+REQUEST = "GET / HTTP/1.1\r\nHost: example.org\r\nConnection: close\r\n\r\n"
+
+
+def start_client(
+    host: str = "example.org", port: int = 80, message: str = "Hello, world!"
+):
+    """
+    Create a simple socket client that sends a message to a server and receives a message back.
+    """
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+        try:
+            logger.info("Connecting...")
+            client.connect((host, port))
+            logger.info("Connected to server at %s:%d", host, port)
+
+            logger.info("Sending: %s", message)
+            client.sendall(message.encode("utf-8"))
+
+            res = b""
+            while True:
+                chunk = client.recv(1024)
+                if not chunk:
+                    break
+                res += chunk
+
+            print(res.decode("utf-8"))
+
+        except ConnectionRefusedError:
+            logger.error("Connection refused. Make sure the server is running.")
+        except socket.error as e:
+            logger.error("Client error: %s", e)
+
+
+if __name__ == "__main__":
+    start_client(message=REQUEST)
+```
+
+We get:
+
+```bash
+❯ uv run simple_client.py
+19-09-2025 19:33:28 - INFO - client - Connecting...
+19-09-2025 19:33:28 - INFO - client - Connected to server at example.org:80
+19-09-2025 19:33:28 - INFO - client - Sending: GET / HTTP/1.1
+Host: example.org
+Connection: close
+
+
+HTTP/1.1 200 OK
+Content-Type: text/html
+ETag: "84238dfc8092e5d9c0dac8ef93371a07:1736799080.121134"
+Last-Modified: Mon, 13 Jan 2025 20:11:20 GMT
+Cache-Control: max-age=86000
+Date: Fri, 19 Sep 2025 20:33:29 GMT
+Content-Length: 1256
+Connection: close
+X-N: S
+
+<!doctype html>
+<html>
+<head>
+    <title>Example Domain</title>
+
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type="text/css">
+    body {
+        background-color: #f0f0f2;
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+    }
+    div {
+        width: 600px;
+        margin: 5em auto;
+        padding: 2em;
+        background-color: #fdfdff;
+        border-radius: 0.5em;
+        box-shadow: 2px 3px 7px 2px rgba(0,0,0,0.02);
+    }
+    a:link, a:visited {
+        color: #38488f;
+        text-decoration: none;
+    }
+    @media (max-width: 700px) {
+        div {
+            margin: 0 auto;
+            width: auto;
+        }
+    }
+    </style>
+</head>
+
+<body>
+<div>
+    <h1>Example Domain</h1>
+    <p>This domain is for use in illustrative examples in documents. You may use this
+    domain in literature without prior coordination or asking for permission.</p>
+    <p><a href="https://www.iana.org/domains/example">More information...</a></p>
+</div>
+</body>
+</html>
+```
+
+Now we can say... Success!! We got the full response!
+/
+But... What if we didn't send the `Connection: close` header, and we wanted to read multiple responses?
+
+Notice also that, with our current code, if we remove the `Connection: close` header, our `While: True` never ends:
+
+```python {3-5}
+            res = b""
+            while True:
+                chunk = client.recv(1024)
+                if not chunk:
+                    break
+                res += chunk
+
+```
+
+Remember that `recv()` **is blocking** meaning it will sit there waiting for the server to say something.
+The loop only breaks when the servers closes the connection and send **0 bytes** (an empty `b""`), so
+it would potentially never end.
+
+In the case of `example.org` the loop will eventually end when the server times out and closes the connection, the client
+will then print the response and close.
+
+## It's all in your Head(ers)
 
