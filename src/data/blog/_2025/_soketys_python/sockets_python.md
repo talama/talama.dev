@@ -310,7 +310,7 @@ This means that when a client connection is accepted, `recv()` will wait potenti
 
 Lets verify that now by filling the while loop in our server:
 
-```python {26,27}
+```python {27-29}
 // file: simple_server.py
 import socket
 
@@ -668,7 +668,7 @@ So what if we use our client to connect to a web server like the one running thi
 All we have to do is change the address to (**talama.dev, 80**):
 
 ```python {11}
-//file: simple_server.py
+//file: simple_client.py
 
 import socket
 
@@ -736,7 +736,7 @@ Content-Type: text/html
 Content-Length: 314
 Expires: Thu, 18 Sep 2025 19:33:23 GMT
 
-<HTML><HEAD>
+<HTML><HEAD> e
 <TITLE>Request Timeout</TITLE>
 </HEAD><BODY>
 <H1>Request Timeout</H1>
@@ -754,4 +754,166 @@ So what if we thought the client to speak HTTP, even just a little?
 ## The client learns some HTTP
 
 But how does someone learn HTTP?
+
+![one actually does](@/assets/images/onedoesnot.jpg)
+
+Currently HTTP/1.1 is defined by:
+
+- [RFC 9112 - HTTP/1.1](https://www.rfc-editor.org/rfc/rfc9112.html)
+- [RFC 9110 - HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110.html)
+- [RFC 9111 - HTTP Caching](https://www.rfc-editor.org/rfc/rfc9110.html)
+
+Not the easiast read, but very intersting. Fortunately we are interested in a **very** small subset of the
+information contained there (at least for now). And we are not going to reference the caching RFC at all.
+
+The syntax of the messages id defined in **RFC 9112**, while the **semantics of methods, status codes, and header files**
+are defined separately in **RFC 9110**.
+
+At its simplest, a request has this structure [RFC 9112, §2.1](https://www.rfc-editor.org/rfc/rfc9112.html#name-message-format):
+
+```bash
+  HTTP-message   = start-line CRLF
+                   *( field-line CRLF )
+                   CRLF
+                   [ message-body ]
+```
+
+where `start-line` can be either a `request-line` or a `status-line` depending if this is a request or a response,
+`*( field-line CRLF )` is **zero or more** header field lines, `CRLF` is an empty line (Carriage return + Line feed `\r\n`) and
+`[message-body]` is an **optional** message body.
+
+A `request line` [RFC 9112, §3](https://www.rfc-editor.org/rfc/rfc9112.html#name-request-line) is defined as
+`Method request-target HTTP-version`.
+
+In our case the `Method` will be **GET** since we want to *get* the home page, the `request-target` will be `/` (the top level resource of the server)
+and `HTTP-version` will be **HTTP/1.1**.
+
+So our request line is:
+
+```bash
+GET / HTTP/1.1\r\n
+```
+
+What about the header field lines? [RFC 9112, §3.2](https://www.rfc-editor.org/rfc/rfc9112.html#name-request-target) says:
+
+> A client MUST send a Host header field (Section 7.2 of [HTTP](https://www.rfc-editor.org/rfc/rfc9110#section-7.2)) in all HTTP/1.1 request messages.
+
+Which brings us to:
+
+```bash
+GET / HTTP/1.1\r\n
+Host: example.org\r\n
+```
+
+Notice that if we intend to close the connection on the client side after we receive the first response from the server, we should also send a:
+
+```bash
+Connection: close\r\n
+```
+
+header, or the server might keep the connection open since **HTTP/1.1** defaults to the use of *persistent connections* allowing multiple requests and responses to be carried over a single connection. [RFC 9112, §9.3](https://www.rfc-editor.org/rfc/rfc9112.html#name-persistence).
+
+Which brings us to the final version of our very first HTTP "sentence":
+
+```bash
+GET / HTTP/1.1\r\n
+Host: example.org\r\n
+Connection: close\r\n
+\r\n
+```
+
+We are ready to modify our client:
+
+```python {8, 12, 37 } ShowLineNumbers
+// file: simple_client.py
+import socket
+
+from utils.logger import get_logger
+
+logger = get_logger("client")
+
+REQUEST = "GET / HTTP/1.1\r\nHost: example.org\r\nConnection: close\r\n\r\n"
+
+
+def start_client(
+    host: str = "example.org", port: int = 80, message: str = "Hello, world!"
+):
+    """
+    Create a simple socket client that sends a message to a server and receives a message back.
+    """
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+        try:
+            logger.info("Connecting...")
+            client.connect((host, port))
+            logger.info("Connected to server at %s:%d", host, port)
+
+            logger.info("Sending: %s", message)
+            client.sendall(message.encode("utf-8"))
+
+            data = client.recv(1024)
+            logger.info("Received: %s", data.decode("utf-8"))
+
+        except ConnectionRefusedError:
+            logger.error("Connection refused. Make sure the server is running.")
+        except socket.error as e:
+            logger.error("Client error: %s", e)
+
+
+if __name__ == "__main__":
+    start_client(message=REQUEST)
+```
+
+When we run it, we get:
+
+```bash
+19-09-2025 19:31:39 - INFO - client - Connecting...
+19-09-2025 19:31:39 - INFO - client - Connected to server at example.org:80
+19-09-2025 19:31:39 - INFO - client - Sending: GET / HTTP/1.1
+Host: example.org
+Connection: close
+
+
+19-09-2025 19:31:39 - INFO - client - Received: HTTP/1.1 200 OK
+Content-Type: text/html
+ETag: "84238dfc8092e5d9c0dac8ef93371a07:1736799080.121134"
+Last-Modified: Mon, 13 Jan 2025 20:11:20 GMT
+Cache-Control: max-age=86000
+Date: Fri, 19 Sep 2025 17:31:39 GMT
+Content-Length: 1256
+Connection: close
+X-N: S
+
+<!doctype html>
+<html>
+<head>
+    <title>Example Domain</title>
+
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type="text/css">
+    body {
+        background-color: #f0f0f2;
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+    }
+    div {
+        width: 600px;
+        margin: 5em auto;
+        padding: 2em;
+        background-color: #fdfdff;
+        border-radius: 0.5em;
+        box-shadow: 2px 3px 7px 2px rgba(0,0,0,0.02);
+    }
+    a:link, a:visited {
+        color: #38
+```
+
+Success!! (kinda).
+
+We received a meaninful response because we made meaningful reques.
+Too bad we only got the first **1024** bytes of it...
 
