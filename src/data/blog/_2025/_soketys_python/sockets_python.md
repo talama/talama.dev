@@ -753,3 +753,5 @@ So what if we thought the client to speak HTTP, even just a little?
 
 ## The client learns some HTTP
 
+But how does someone learn HTTP?
+
