@@ -3,7 +3,7 @@ title: Understanding sockets with Python - Part 2
 author: Luca Salomoni
 date: 2025-09-13T19:00:25.283Z
 featured: true
-draft: true
+draft: false
 categories:
   - Networking
 tags:
@@ -15,8 +15,8 @@ description: >-
   have a client that can make a valid HTTP request to a web server and process
   the response.
 ---
-This is the second part in a serie of posts in which we will look at what sockets are
-and how we can use them to communicate over the internet, by writing some simple client/server code in Python.
+This is the second part in a serie of posts where we'll explore what sockets are
+and how we can use them to communicate over a network, by writing some simple client/server code in Python.
 
 At the end of the post we will have a
 client that can make a valid HTTP request to a web server and process the
@@ -26,14 +26,14 @@ response.
 
 ## The Client
 
-We covered quite a bit of ground on the **socket API** so now writing a simple client should prove to be easy.
+In [part 1](sockets_python_1) we covered quite a bit of ground on the **socket API** so now writing a simple client should prove to be easy.
 
-But what does the client do? It:
+But what does a client do? It:
 
-- **Ask the OS for a socket that matches the server's**
-- **Connect to the server socket**
-- **Send and receive data**
-- **Close the connection**
+- **Asks the OS for a socket that matches the server's family and type**
+- **Connects to the server socket**
+- **Sends and receives data**
+- **Closes the connection**
 
 In our case we know that the server address will be **(127.0.0.1, 35555)**,
 but if we'd use an **hostnanme**, `socket.connect((hostname, port))` would perform a **DNS lookup** for us.
@@ -72,7 +72,7 @@ for res in results:
         print("-" * 40)
 ```
 
-when run will give you:
+when run will give us:
 
 ```bash
 Address: ('23.220.75.238', 80)
@@ -176,6 +176,7 @@ Now if we run the server and then try to connect with the client while the serve
 ```
 
 So now we have a working, albeit **very simple**, client/server pair built using the socket API.
+
 Both client and server request the OS a socket with the same **family/type**, the server binds to an address and listens, while the client connects.
 They then procede to **send/recv** data. Making sense of what the data means, and how to process it, is up the developer (you).
 
@@ -237,10 +238,10 @@ CF-RAY: -
 As you can see the connection part of the interaction between the server and the client works just fine.
 (Notice also how `client.connect()` does the **DNS lookup** of the hostname for us).
 
-But then we send a message that the server doesn't know how to interpret so it answers with a bad request.
+But then we send a message that the web server doesn't know how to interpret, so it answers with a bad request.
 
 Some servers will answer differently, but most of the times you will either get a `400 Bad Request`,
-or your client will hang untill it gets `408 Request Timeout` from the server.
+or your client will hang until it gets `408 Request Timeout` from the server.
 
 This is what you get if you try to connect to (**example.org, 80**)
 
@@ -360,7 +361,9 @@ def start_client(
     host: str = "example.org", port: int = 80, message: str = "Hello, world!"
 ):
     """
-    Create a simple socket client that sends a message to a server and receives a message back.
+    Create a simple socket client that sends a
+    GET request to a web server message to a server
+    and reads the response.
     """
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
@@ -460,7 +463,9 @@ def start_client(
     host: str = "example.org", port: int = 80, message: str = "Hello, world!"
 ):
     """
-    Create a simple socket client that sends a message to a server and receives a message back.
+    Create a simple socket client that sends a
+    GET request to a web server message to a server
+    and reads the response.
     """
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
@@ -561,10 +566,16 @@ X-N: S
 ```
 
 Now we can say... Success!! We got the full response!
-/
-But... What if we didn't send the `Connection: close` header, and we wanted to read multiple responses?
 
-Notice also that, with our current code, if we remove the `Connection: close` header, our `While: True` never ends:
+But... What if we didn't send the `Connection: close` header?
+[RFC 9112, Section 9.3](https://www.rfc-editor.org/rfc/rfc9112.html#name-persistence) explains how:
+
+> HTTP/1.1 defaults to the use of "persistent connections", allowing multiple requests and responses to be carried over a single connection. HTTP implementations **SHOULD** support persistent connections.
+
+Opening a new TCP connection for every request is expensive (3-way handshake, slow start, TLS handshake if HTTPS), so for example we might
+want to request **/index.html**, **/style.css**, **/main.js** all over the same connection if the server supports it.
+
+Notice also that there is a bug in our current implentation. If we remove the `Connection: close` header, our `While: True` never ends:
 
 ```python {3-5}
             res = b""
@@ -588,6 +599,231 @@ Time to use your head(ers)!
 
 ## It's all in your Head(ers)
 
-The idea is to use the `Content-Lenght: body-length` header to know how many bytes the body is.
-We know from ( [RFC 9112, Section 2.1](https://www.rfc-editor.org/rfc/rfc9112.html#name-message-format) ) that the end of the headers part of the message is delimited by `\r\n\r\n`, so we can `recv()` from the server untill we find that delimiter, search the headers for `Content-Lenght: body-length` and then we call `recv()` in a loop untill we receive `body-length` bytes of data.
+The idea is to use the `Content-Length: body-length` header to know how many bytes we should read.
+
+We know from ( [RFC 9112, Section 2.1](https://www.rfc-editor.org/rfc/rfc9112.html#name-message-format) )
+that the end of the headers part of the message is delimited by `\r\n\r\n`,
+so we can `recv()` from the server until we find that delimiter, then search the headers for `Content-Length: body-length`
+and finally call `recv()` in a loop until we have received `body-length` bytes.
+
+Let's first get all the headers:
+
+```python title="simple_client.py" {26-41}
+import socket
+
+from utils.logger import get_logger
+
+logger = get_logger("client")
+
+REQUEST = "GET / HTTP/1.1\r\nHost: example.org\r\n\r\n"
+
+
+def start_client(
+    host: str = "example.org", port: int = 80, message: str = "Hello, world!"
+):
+    """
+    Create a simple socket client that sends a
+    GET request to a web server message to a server
+    and reads the response.
+    """
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+        try:
+            logger.info("Connecting...")
+            client.connect((host, port))
+            logger.info("Connected to server at %s:%d", host, port)
+
+            logger.info("Sending: %s", message)
+            client.sendall(message.encode("utf-8"))
+
+            buffer = b""
+            while b"\r\n\r\n" not in buffer:
+                chunk = client.recv(1024)
+                buffer += chunk
+
+            # Depending on where the in the buffer was "\r\n\r\n"
+            # when we exit the loop we probably have read some of the body
+            # already in the buffer, so we assign it to body
+            headers, body = buffer.split(b"\r\n\r\n", 1)
+            headers = headers.decode("utf-8").split("\r\n")
+
+            logger.info("Received headers:")
+            for h in headers:
+                print(h)
+
+        except ConnectionRefusedError:
+            logger.error("Connection refused. Make sure the server is running.")
+        except OSError as e:
+            logger.error("Client error: %s", e)
+
+
+if __name__ == "__main__":
+    start_client(message=REQUEST)
+```
+
+When we run it we get:
+
+```bash
+❯ uv run simple_client.py
+20-09-2025 22:22:58 - INFO - client - Connecting...
+20-09-2025 22:22:58 - INFO - client - Connected to server at example.org:80
+20-09-2025 22:22:58 - INFO - client - Sending: GET / HTTP/1.1
+Host: example.org
+
+
+20-09-2025 22:22:58 - INFO - client - Received headers:
+HTTP/1.1 200 OK
+Content-Type: text/html
+ETag: "84238dfc8092e5d9c0dac8ef93371a07:1736799080.121134"
+Last-Modified: Mon, 13 Jan 2025 20:11:20 GMT
+Cache-Control: max-age=86000
+Date: Sat, 20 Sep 2025 20:22:58 GMT
+Content-Length: 1256
+Connection: keep-alive
+```
+
+Notice, again that the choice of **1024** as `bufsize` is a arbitrary number i picked for this tutorial, and that it's the **max** amount of data we can receive at once,
+but we could also be receiving **less** than `bufsize`.
+It's small enough to show a couple of `recv()` iterations, but big enough to avoid a ton of tiny reads.
+
+Moving on, now that we have our `headers` we can look for `Content-Length:` and find how many bytes the body is.
+Then we can read however many bytes we have left (we have most likely already read some of the body).
+
+```python title="simple_client.py" {36-45}
+
+import socket
+
+from utils.logger import get_logger
+
+logger = get_logger("client")
+
+REQUEST = "GET / HTTP/1.1\r\nHost: example.org\r\n\r\n"
+
+
+def start_client(
+    host: str = "example.org", port: int = 80, message: str = "Hello, world!"
+):
+    """
+    Create a simple socket client that sends a
+    GET request to a web server message to a server
+    and reads the response.
+    """
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+        try:
+            logger.info("Connecting...")
+            client.connect((host, port))
+            logger.info("Connected to server at %s:%d", host, port)
+
+            logger.info("Sending: %s", message)
+            client.sendall(message.encode("utf-8"))
+
+            buffer = b""
+            while b"\r\n\r\n" not in buffer:
+                chunk = client.recv(1024)
+                buffer += chunk
+
+            headers, body = buffer.split(b"\r\n\r\n", 1)
+            headers = headers.decode("utf-8").split("\r\n")
+
+            body_length: int = 0
+            for h in headers:
+                if h.lower().startswith("content-length:"):
+                    body_length = int(h.split(":", 1)[1].strip())
+                print(h)
+
+            while len(body) < body_length:
+                chunk = client.recv(1024)
+                body += chunk
+            print(body.decode("utf-8"))
+
+        except ConnectionRefusedError:
+            logger.error("Connection refused. Make sure the server is running.")
+        except OSError as e:
+            logger.error("Client error: %s", e)
+
+
+if __name__ == "__main__":
+    start_client(message=REQUEST)
+```
+
+And now, finally:
+
+```bash
+❯ uv run simple_client.py
+20-09-2025 22:27:27 - INFO - client - Connecting...
+20-09-2025 22:27:27 - INFO - client - Connected to server at example.org:80
+20-09-2025 22:27:27 - INFO - client - Sending: GET / HTTP/1.1
+Host: example.org
+
+
+HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Content-Type: text/html
+ETag: "84238dfc8092e5d9c0dac8ef93371a07:1736799080.121134"
+Last-Modified: Mon, 13 Jan 2025 20:11:20 GMT
+Content-Length: 1256
+Cache-Control: max-age=86000
+Date: Sat, 20 Sep 2025 20:27:27 GMT
+Connection: keep-alive
+<!doctype html>
+<html>
+<head>
+    <title>Example Domain</title>
+
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type="text/css">
+    body {
+        background-color: #f0f0f2;
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+    }
+    div {
+        width: 600px;
+        margin: 5em auto;
+        padding: 2em;
+        background-color: #fdfdff;
+        border-radius: 0.5em;
+        box-shadow: 2px 3px 7px 2px rgba(0,0,0,0.02);
+    }
+    a:link, a:visited {
+        color: #38488f;
+        text-decoration: none;
+    }
+    @media (max-width: 700px) {
+        div {
+            margin: 0 auto;
+            width: auto;
+        }
+    }
+    </style>
+</head>
+
+<body>
+<div>
+    <h1>Example Domain</h1>
+    <p>This domain is for use in illustrative examples in documents. You may use this
+    domain in literature without prior coordination or asking for permission.</p>
+    <p><a href="https://www.iana.org/domains/example">More information...</a></p>
+</div>
+</body>
+</html>
+```
+
+Great! We finally managed to properly connect to a web server, send a valid **GET request** and correctly read the **response**!
+
+Unfortunately if we try to connect to other web servers we are most likely going to encounter a few problems.
+
+First of all, we are not supporting `HTTPS` and almost all public websites enforce it nowadays (and if a website doesnt you probably shouldn't trust it).
+
+Second, determining the `body-length` is not as easy as it sounds because `Content-Length:` is not the only header that we would need to support.
+
+As always we must refer to our good ol' friend [RFC 9112, Section 6.3](https://www.rfc-editor.org/rfc/rfc9112.html#name-message-body-length)
+where we can see that things are quite more complicated than we initially thought.
+
+We might update our client in the next part of this series, but for now what if we taught our **simple server** some HTTP too?
 
