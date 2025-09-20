@@ -1,7 +1,7 @@
 ---
 title: Understanding sockets with Python - Part 1
 author: Luca Salomoni
-date: 2025-09-13T19:00:25.283Z
+date: 2025-09-20T19:00:25.283Z
 featured: true
 draft: false
 categories:
@@ -14,8 +14,8 @@ description: >-
   At the end we will have a server that we can telnet to, and that will echo our
   messages.
 ---
-This is the first part in a serie of posts in which we will look at what sockets are
-and how we can use them to communicate over the internet, by writing some simple client/server code in Python.
+This is the first part in a series of posts where we'll explore what sockets are
+and how we can use them to communicate over a network, by writing some simple client/server code in Python.
 
 At the end of this post we will have a server that we can telnet to, and that will echo our messages.
 
@@ -23,12 +23,12 @@ At the end of this post we will have a server that we can telnet to, and that wi
 
 ## Sockets, a definition and a little bit of history
 
-So, first of all, what is a socket? Soket are a form of IPC (inter process communication) that gives processes
+So, first of all, what is a socket? Sockets are a form of IPC (inter process communication) that gives processes
 a way to communicate with each other.
 They are not the only form of IPC but they are the most popular especially for **cross platform** communication.
 
-The socket API allows a variety of method of communication between processes
-and one of these methods is through the internet, which is what we are going to focus on in this post.
+The socket API allows a variety of method of communication between processes.
+One of these methods is through the internet, which is our focus in this post.
 
 The idea of sockets comes from the early days of UNIX in the 1980s, when the BSD (Berkeley Software Distribution)
 operating system introduced the Berkeley sockets API.
@@ -36,7 +36,7 @@ This API became the foundation for network programming
 and remains the model used by modern languages—including Python today.
 
 In Python, the Python sockets API is a library that calls the lower-level C sockets API.
-At least on Unixlikes. On other platforms, it will call whatever API that OS exposes for network communication.
+At least on Unixlikes systems. On other platforms, it will call whatever API that OS exposes for network communication.
 
 ## The Python socket API
 
@@ -52,17 +52,15 @@ The [asyncio](https://docs.python.org/3/library/asyncio.html) module is a librar
 concurrent code using the **async/await** syntax and serves as a foundation
 for many Python asynchronous frameworks that power high-performance network and web servers.
 
-At the end of this post, we’ll look at simple examples of both `socketserver` and `asyncio`
-(with a special focus on `asyncio`).
-
-While there are real-world scenarios where you'd choose the lower level `socket` API
+While there are real-world scenarios for choosing the lower-level `socket` API
 over higher level abstractions
---low level protocols, working with raw sockets for packet sniffers and protocol analyzers--
+(eg., for low level protocols or working with raw sockets for packet sniffers and protocol analyzers),
 the main reason we are using it here is educational.
+
 Looking "under the hood" and building "a toy version" of something is
 the best way to truly understand a concept, and it also makes the higher-level abstractions much clearer.
 
-Also... it's a lot fun!
+Also... it's a lot of fun!
 
 ## A little logger
 
@@ -125,7 +123,7 @@ With this idea in mind we're going to create a program that will:
 6. **Handle the end of the connection**.
    When the client connection closes, the server moves on to the next accepted connection (if any), or goes back to listening on the bound port.
 
-Now that everythin is, hopefully clear, lets start writing some code!
+Now that everything is hopefully clear, let's start writing some code!
 
 ### Creating a socket object
 
@@ -141,7 +139,7 @@ to create a socket object. The parameters are:
 - `type`: The *style* of communication. Defaults to **SOCK_STREAM** (connection-oriented, reliable, sequenced byte stream, usually TCP).
   Other valid values are **SOCK_DGRAM** (datagram-based, unreliable, unordered messages, usually UDP), **SOCK_RAW** (raw sockets, we bypass most of the OS's protocol handling and talk almost directly to the network layer so that we can construct our own IP/ICMP/TCP/UDP headers).
 - `proto`: protocol number. The default value 0 means that the combination of **address family** and **type** will determine the protocol and we don't need to specify one. (So for example if we have **AF_INET** and **SOCK_STREAM** as family/type with `proto=0` **TCP** will be used )
-- `fileno` (lets us use a file descriptor representing a socket that we got from somewhere else, and wrap it in a python socket object. The default value `None` tells Python to create a brand new socket object)
+- `fileno`: lets us use a file descriptor representing a socket that we got from another source, and wrap it in a Python socket object. The default value `None` tells Python to create a brand new socket object.
 
 Here is an example that creates a socket that uses IPv4 at the network layer and TCP at the transport layer:
 
@@ -189,7 +187,11 @@ socket.listen([backlog])
 ```
 
 where `backlog` is the number of yet **unaccepted** connections that the system will allow before refusing new connections requests. If `backlog` is not specified a reasonable default value is chosen.
-By default a socket listening for connections will accept and process **one** connection at a time (unless of course we add concurrency --and we will later-- using `threads`, `select` or `asyncio`), and once that connection is closed it will **accept** and process the next one in the "backlog".
+
+By default a socket listening for connections will accept and process **one** connection at a time (unless of course we add concurrency using for example `threads`, `select` or `asyncio`), but it will also mantain a queue of pending connections. The backlog parameter specifies the maximum size of this queue. When a client attempts to
+connect, if the queue is full, the connection may be refused.
+
+After a connection is closed, the server will accept the next one from the queue.
 
 When a connection is accepted with:
 
@@ -239,7 +241,7 @@ def start_server(host: str = "", port: int = 35555):
 
         except KeyboardInterrupt:
             logger.info("Server closed by user.")
-        except socket.error as e:
+        except OSError as e:
             logger.error("Server error: %s", e)
 
 
@@ -306,14 +308,14 @@ When `recv()` returns **0 bytes** it means the other side has closed the connect
 That doesn't mean that, for example `data = recv(1024)` will receive **1024** bytes each time.
 
 Partial reads are normal because a message can arrive in chunks that can be either **bigger** or **smaller** than `bufsize`.
-It's up to you to make sure to keep calling `recv()` until the message from the server has been dealt with.
+It's up to you to make sure to repeatedly call `recv()` until the entire message from the client has been received.
 
 `recv()` is also **blocking** meaning that, on one side it will wait until *at least one byte is available*
 and on the other side it will keep receiving until the connection is broken.
 
 This means that when a client connection is accepted, `recv()` will wait potentially "forever" until the first byte is sent from the client.
 
-Lets verify that now by filling the while loop in our server:
+Let's verify that now by filling in the while loop in our server:
 
 ```python {27-29}
 // file: simple_server.py
@@ -343,11 +345,12 @@ def start_server(host: str = "", port: int = 35555):
                 with conn:
                     logger.info("Accepted connection from: %s", addr)
                     data: bytes = conn.recv(1024)
-                    if not data: break
+                    if not data:
+                        break
                     logger.info("Received: %s", data.decode("utf-8"))
        except KeyboardInterrupt:
             logger.info("Server closed by user.")
-        except socket.error as e:
+        except OSError as e:
             logger.error("Server error: %s", e)
 
 
@@ -403,15 +406,18 @@ Connection closed by foreign host.
 The client will send the message **"Ciao!"** to the server,
 the server will `recv()` the message and then close the connection to the client.
 
-It's really worth noting that a `bufsize` of **1024**, while quite common, is also completely arbitrary, and that **you** are responsible for
-implementing the logic for properly receiving the client message.
+It's really worth noting that a `bufsize` of **1024**, while quite common, is also completely arbitrary, and that we are only calling `recv()` once,
+receiving only at most **1024** bytes of data.
+
+**You** are responsible for implementing the logic for properly receiving the client message.
+In the next part of this series we will look on how we can accomplish that.
 
 The reason is that the **socket API** gives you the tools to create a connection between the client and the server, and to transmit and receive the data along that connection.
 What the data means, and how it should be interpreted by the client and server is up to you to decide. In other words you have to implement your own **protocol** or use an existing one.
 
 Think of the **socket API** as the tool that allows you to build the telegraph line, but you still need to use the morse code to communicate, or invent your own communication code.
 
-As last "improvement" for our server we will echo back to the client the data we received:
+As a final "improvement" for our server, we will echo back to the client the data we received:
 
 ```python
 // file: simple_server.py
@@ -441,20 +447,23 @@ def start_server(host: str = "", port: int = 35555):
                 with conn:
                     logger.info("Accepted connection from: %s", addr)
                     data: bytes = conn.recv(1024)
-                    if not data: break
+                    if not data:
+                        break
                     logger.info("Received: %s", data.decode("utf-8"))
-
                     logger.info("Sending to %s: %s", addr, data.decode("utf-8"))
                     conn.sendall(data)
         except KeyboardInterrupt:
             logger.info("Server closed by user.")
-        except socket.error as e:
+        except OSError as e:
             logger.error("Server error: %s", e)
+
+if __name__ == "__main__":
+    start_server()
 ```
 
-`scoket.send(bytes)` takes a **byte-like object** as input and attempts to transmit as much of that data as possible in one system call and returns the number of bytes sent.
+`socket.send(bytes)` takes a **byte-like object** as input and attempts to transmit as much of that data as possible in one system call and returns the number of bytes sent.
 You can clearly see the parallel with `socket.recv(bufsize)`, but since the sender knows the size of the message (unlike the receiver),
-a `sendall()` method exist that will call `send()` untill the entire buffer is transmitted (or an error occurs).
+a `sendall()` method exists that will call `send()` repeatedly until the entire buffer is transmitted (or an error occurs).
 
 So now finally if we start our server and send a message with telnet:
 
@@ -510,6 +519,9 @@ We can call that a resounding success for now!
 But what fun is it to use telnet? Wouldn't it be much better if we could write our own client?
 This is exactly what we are going to do in the [next part](sockets_python_2)!
 
-We covered quite a bit of ground in this first part, but there is so much more to uncover.
-Don't forget to play around with our code, make it better, break it and most importantly... have fun!
+## Conclusions
+
+We covered quite a bit of ground in this first part, but there is so much more to explore.
+We've looked at what sockets are and how we can use the socket module in Python to create communication channels over a network.
+Don't forget to play around with our code, make it better, break it and, most importantly... have fun!
 
