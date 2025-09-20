@@ -4,7 +4,7 @@ export const SITE = {
   profile: "https://github.com/talama",
   desc: "My dev blog",
   title: "Talama.dev",
-  ogImage: "",
+  ogImage: "../public/og.png",
   lightAndDarkMode: true,
   postPerIndex: 4,
   postPerPage: 4,
