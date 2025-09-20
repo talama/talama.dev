@@ -3,7 +3,7 @@ title: Understanding sockets with Python - Part 2
 author: Luca Salomoni
 date: 2025-09-13T19:00:25.283Z
 featured: true
-draft: false
+draft: true
 categories:
   - Networking
 tags:

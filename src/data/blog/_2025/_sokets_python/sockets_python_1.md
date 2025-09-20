@@ -1,7 +1,8 @@
 ---
 title: Understanding sockets with Python - Part 1
 author: Luca Salomoni
-date: 2025-09-20T19:00:25.283Z
+date: 2025-09-18T19:00:25.283Z
+updated: 2025-09-20T19:04:39.016Z
 featured: true
 draft: false
 categories:
