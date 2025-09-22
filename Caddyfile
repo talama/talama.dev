@@ -4,5 +4,9 @@
   # Handle clean URLs - try the path, then with .html extension
   try_files {path} {path}.html {path}/index.html
 
+  handle_path / {
+    try_files {path} {path}.html {path}/index.html
+    file_server
+  }
   file_server
 }

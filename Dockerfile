@@ -2,8 +2,8 @@
 FROM node:20-slim AS builder
 RUN corepack enable
 
-WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
+WORKDIR /app
 
 RUN pnpm install --frozen-lockfile
 COPY . .
