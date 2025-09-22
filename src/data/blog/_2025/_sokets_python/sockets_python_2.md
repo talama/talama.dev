@@ -820,10 +820,285 @@ Unfortunately if we try to connect to other web servers we are most likely going
 
 First of all, we are not supporting `HTTPS` and almost all public websites enforce it nowadays (and if a website doesnt you probably shouldn't trust it).
 
-Second, determining the `body-length` is not as easy as it sounds because `Content-Length:` is not the only header that we would need to support.
+Second, determining the `body-length` is not as easy as it sounds because `Content-Length:` is not the only header that we would need to support,
+we should at least support `Transfer-Enconding: chunked`.
 
 As always we must refer to our good ol' friend [RFC 9112, Section 6.3](https://www.rfc-editor.org/rfc/rfc9112.html#name-message-body-length)
 where we can see that things are quite more complicated than we initially thought.
 
 We might update our client in the next part of this series, but for now what if we taught our **simple server** some HTTP too?
+
+## The server learns some HTTP too
+
+We are going to modify our server to parse a well formed **HTTP request** and respond properly.
+
+Remember from [RFC 9112, Section 2.1](https://www.rfc-editor.org/rfc/rfc9112.html#name-message-format) that:
+
+```bash
+  HTTP-message   = start-line CRLF
+                   *( field-line CRLF )
+                   CRLF
+                   [ message-body ]
+```
+
+And `start-line` in the case of a responst is a `status'line` [RFC 9112, Section 4](https://www.rfc-editor.org/rfc/rfc9112.html#name-status-line)
+
+```bash
+ status-line = HTTP-version status-code [ reason-phrase ]
+```
+
+Status codes are described in [RFC 9110, Section 15](https://www.rfc-editor.org/rfc/rfc9110#name-status-codes)
+
+So, for example, if we receive a well formed request for `/` the status line would be:
+
+```bash
+HTTP/1.1 200 OK
+```
+
+Where `200` is the status code and `OK` is the optional `reason-phrase`.
+
+We would then add the response headers, starting with `Content-Length: body-size`, a `Content-Type: media-type` (it's not mandatory but if the sender knows the media type, it SHOULD generate the appropriate header) and a `Connection: keep-alive / close` header, depending on how we want to handle the connection.
+
+For now we are going to send back a simple **html** page that we are going to store in memory.
+
+Let's write the server code that reads the request:
+
+```python title="simple_server.py" {27-38} showLineNumbers
+import socket
+
+from utils.logger import get_logger
+
+logger = get_logger("server")
+
+
+def start_server(host: str = "", port: int = 35555):
+    """
+    Starts a simple TCP socket listening for connection on a port.
+    Receives a message and sends it back.
+    """
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as my_server:
+        my_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            logger.info("Starting server...")
+            my_server.bind((host, port))
+            my_server.listen()
+            logger.info("Listening on port: %d", port)
+
+            while True:
+                conn, addr = my_server.accept()
+                with conn:
+                    logger.info("Accepted connection from: %s", addr)
+
+                    request = b""
+                    while b"\r\n\r\n" not in request:
+                        chunk = conn.recv(1024)
+                        if not chunk:
+                            break
+                        request += chunk
+
+                    logger.info("Received: ")
+                    print(request.decode("utf-8"))
+
+                    logger.info("Sending to %s:", addr)
+                    print(request.decode("utf-8"))
+
+                    conn.sendall(request)
+        except KeyboardInterrupt:
+            logger.error("Server closed by user.")
+        except OSError as e:
+            logger.error("Server error: %s", e)
+
+
+if __name__ == "__main__":
+    start_server()
+```
+
+If we run the serve and send a request from the client:
+
+```bash
+❯ uv run simple_server.py
+22-09-2025 22:04:51 - INFO - server - Starting server...
+22-09-2025 22:04:51 - INFO - server - Listening on port: 35555
+22-09-2025 22:04:56 - INFO - server - Accepted connection from: ('127.0.0.1', 58372)
+22-09-2025 22:04:56 - INFO - server - Received:
+GET / HTTP/1.1
+Host: example.org
+
+
+22-09-2025 22:04:56 - INFO - server - Sending to ('127.0.0.1', 58372):
+GET / HTTP/1.1
+Host: example.org
+```
+
+We get the request correctly but there are a few problems.
+If the request is not valid and it doesn't contain `\r\n\r\n`
+both the server and the client are going to get stuck waiting for the other to say something or close the connection.
+
+But we also don't want to get stuck reading a very long message from the client in the hope that we'll get `\r\n\r\n` at some point.
+
+So for our simple server the fix will be to set a `conn.settimeout(5)` so if the server doesn't receive data for 5 seconds it will fail.
+
+We are also going to set a `MAX_HEADER_SIZE` so that if after a certain amount of data we dont get a `\r\n\r\n`, we are going to send either a
+`400 Bad Request` or a `413 Content Too Large`.
+
+Our `start_server()` function has already grown too big so we are going to delegate the handling of the connection to another function `handle_conn()`
+In case of a correct request we'll send back the correct headers with `Hello, world!` as body.
+
+First a little change to our client:
+
+```python title=simple_client.py {7-9} showLineNumbers
+import socket
+
+from utils.logger import get_logger
+
+logger = get_logger("client")
+
+REQUEST_OK = "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
+REQUEST_TIMEOUT = "GET / HTTP/1.1"
+REQUEST_MAX_SIZE = "Hello world" * 1000
+
+[...]
+```
+
+And for the server
+
+```python title=simple_server.py {7-19, 22-36, 56-66} showLineNumbers
+import socket
+
+from utils.logger import get_logger
+
+logger = get_logger("server")
+
+MAX_HEADER_SIZE = 8192  # 8KB
+CONTENT_TOO_LARGE = (
+    b"HTTP/1.1 413 Request Header Fields Too Large\r\nConnection: close\r\n\r\n"
+)
+
+CONNECTION_TIMEOUT = b"HTTP/1.1 408 Request Timeout\r\nConnection: close\r\n\r\n"
+REQUEST_OK = (
+    b"HTTP/1.1 200 OK\r\n"
+    b"Content-Type: text/plain\r\n"
+    b"Content-Length: 12\r\n"
+    b"Connection: close\r\n\r\n"
+    b"Hello World!"
+)
+
+
+def handle_conn(conn: socket.socket) -> tuple[int, bytes]:
+    request = b""
+    try:
+        while b"\r\n\r\n" not in request:
+            chunk = conn.recv(1024)
+            if not chunk:
+                break
+            request += chunk
+
+            if len(request) >= MAX_HEADER_SIZE:
+                return (413, CONTENT_TOO_LARGE)
+
+        return (200, request)
+    except socket.timeout:
+        return (408, CONNECTION_TIMEOUT)
+
+
+def start_server(host: str = "", port: int = 35555):
+    """
+    Starts a simple TCP socket listening for connection on a port.
+    Receives a message and sends it back.
+    """
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as my_server:
+        my_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            logger.info("Starting server...")
+            my_server.bind((host, port))
+            my_server.listen()
+            logger.info("Listening on port: %d", port)
+
+            while True:
+                conn, addr = my_server.accept()
+                with conn:
+                    conn.settimeout(5)
+                    logger.info("Accepted connection from: %s", addr)
+                    status, request = handle_conn(conn)
+
+                    if status != 200:
+                        logger.info("Sending error message %s to: %s", status, addr)
+                        conn.sendall(request)
+                    else:
+                        logger.info("Received request:")
+                        print(request.decode("utf-8"))
+                        conn.sendall(REQUEST_OK)
+
+        except KeyboardInterrupt:
+            logger.error("Server closed by user.")
+        except OSError as e:
+            logger.error("Server error: %s", e)
+
+
+if __name__ == "__main__":
+    start_server()
+```
+
+If we send `REQUEST_TIMEOUT` from the client we get:
+
+```bash
+❯ uv run -m simple_server.py
+22-09-2025 23:27:29 - INFO - server - Starting server...
+22-09-2025 23:27:29 - INFO - server - Listening on port: 35555
+22-09-2025 23:27:32 - INFO - server - Accepted connection from: ('127.0.0.1', 32814)
+22-09-2025 23:27:37 - INFO - server - Sending error message 408 to: ('127.0.0.1', 32814)
+```
+
+```bash
+❯ uv run -m simple_client.py
+22-09-2025 23:27:32 - INFO - client - Connecting...
+22-09-2025 23:27:32 - INFO - client - Connected to server at localhost:35555
+22-09-2025 23:27:32 - INFO - client - Sending:
+GET / HTTP/1.1
+HTTP/1.1 408 Request Timeout
+Connection: close
+```
+
+For `REQUEST_MAX_SIZE` we get:
+
+```bash
+server
+22-09-2025 23:29:11 - INFO - server - Accepted connection from: ('127.0.0.1', 43174)
+22-09-2025 23:29:11 - INFO - server - Sending error message 413 to: ('127.0.0.1', 43174)
+```
+
+```bash
+client
+HTTP/1.1 413 Request Header Fields Too Large
+Connection: close
+```
+
+And for a `REQUEST_OK`
+
+```bash
+server
+22-09-2025 23:36:26 - INFO - server - Received request:
+GET / HTTP/1.1
+Host: localhost
+```
+
+```bash
+client
+22-09-2025 23:36:26 - INFO - client - Connecting...
+22-09-2025 23:36:26 - INFO - client - Connected to server at localhost:35555
+22-09-2025 23:36:26 - INFO - client - Sending:
+GET / HTTP/1.1
+Host: localhost
+
+
+HTTP/1.1 200 OK
+Content-Type: text/plain
+Content-Length: 12
+Connection: close
+Hello World!
+```
+
+Next we are going to send some basic valid **HTML** back to the client instead.
 
