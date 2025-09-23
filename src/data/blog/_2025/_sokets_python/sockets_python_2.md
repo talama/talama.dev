@@ -841,7 +841,7 @@ Remember from [RFC 9112, Section 2.1](https://www.rfc-editor.org/rfc/rfc9112.htm
                    [ message-body ]
 ```
 
-And `start-line` in the case of a responst is a `status'line` [RFC 9112, Section 4](https://www.rfc-editor.org/rfc/rfc9112.html#name-status-line)
+And `start-line` in the case of a responst is a `status-line` [RFC 9112, Section 4](https://www.rfc-editor.org/rfc/rfc9112.html#name-status-line)
 
 ```bash
  status-line = HTTP-version status-code [ reason-phrase ]
@@ -959,6 +959,7 @@ REQUEST_TIMEOUT = "GET / HTTP/1.1"
 REQUEST_MAX_SIZE = "Hello world" * 1000
 
 [...]
+
 ```
 
 And for the server
@@ -1100,5 +1101,85 @@ Connection: close
 Hello World!
 ```
 
+## Serving pages from disk
+
 Next we are going to send some basic valid **HTML** back to the client instead.
+We are going to parse the **GET** request (our server only supports those for now)
+and try to serve the requested resource **from disk**, if it doesnt exist we'll serve a **404** page.
+
+I'm going to create a directory called **public/** from which I am going to serve:
+
+```html title="index.html"
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Welcome</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+        margin-top: 10%;
+        color: #333;
+      }
+      h1 {
+        font-size: 2.5em;
+        color: #0066cc;
+      }
+      p {
+        font-size: 1.2em;
+      }
+      a {
+        color: #0066cc;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Hello from Simple Server</h1>
+    <p>
+      This is the <strong>index.html</strong> page served by your trusted Python
+      socket server!
+    </p>
+  </body>
+</html>
+```
+
+and:
+
+```html title="404.html"
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>404 Not Found</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+        margin-top: 10%;
+        color: #444;
+      }
+      h1 {
+        font-size: 3em;
+        color: #c00;
+      }
+      p {
+        font-size: 1.2em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>404</h1>
+    <p>The page you are looking for could not be found.</p>
+    <hr />
+    <p><a href="/">Return to homepage</a></p>
+  </body>
+</html>
+```
+
+We are also going to clean our code a little
 
