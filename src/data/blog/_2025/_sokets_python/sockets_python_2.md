@@ -1181,5 +1181,449 @@ and:
 </html>
 ```
 
-We are also going to clean our code a little
+We are also going to clean our code a little and split the code into multiple functions.
+If we plan to add more feature we should really start think at a proper refactor and especially
+to add **proper testing**, but we'll leave that for the next part in this serie.
+
+```python title="simple_server.py" {9-24}
+import os
+import socket
+
+from utils.logger import get_logger
+
+logger = get_logger("server")
+
+MAX_HEADER_SIZE = 8192  # 8KB
+PUBLIC_DIR = os.path.abspath("./public")
+
+
+def safe_join(public_dir: str, req_path: str) -> str | None:
+    """
+    Safely join paths preventing directory traversal
+    """
+
+    path = req_path.lstrip("/")
+
+    full_path = os.path.abspath(os.path.join(public_dir, path))
+
+    if not full_path.startswith(public_dir):
+        return None  # invalide path
+
+    return full_path
+```
+
+This is a function to safely join `public_dir` with the `resource path` from the request, so that it prevents
+directory traversal. The client could send a malicious request that would try to "escape" from the `public` directory and
+retrive something that the client should not have access to. (ie `GET /../../etc/passwd HTTP/1.1`).
+
+```python title="simple_server.py" {} showLineNumbers
+def parse_request(request: bytes) -> str | None:
+    """
+    Extract the path from the HTTP request line.
+    """
+
+    try:
+        request_line = request.decode("utf-8").split("\r\n")[0]
+
+        method, path, _ = request_line.split()
+
+        if method != "GET":
+            return None  # For now we only support GET
+        if path == "/":
+            path = "/index.html"
+        return path
+
+    except (ValueError, IndexError):
+        return None
+```
+
+This function takes a `GET request` (the only kind of rquest our server can handle so far)
+and extract the path of the resource requested. Simple enough.
+
+```python title="simple_server.py" {} showLineNumbers
+def build_response(status_code: int, body: bytes | None = None) -> bytes:
+    """Build an HTTP/1.1 response string."""
+
+    reasons = {
+        200: "OK",
+        400: "Bad Request",
+        404: "Not Found",
+        408: "Request Timeout",
+        431: "Request Header Fields Too Large",
+        500: "Internal Server Error",
+    }
+    reason = reasons.get(status_code, "Unknown")
+
+    # Build headers list
+    headers = [f"HTTP/1.1 {status_code} {reason}"]
+
+    if body:
+        headers.extend(
+            [
+                f"Content-Length: {len(body)}",
+                "Content-Type: text/html",
+            ]
+        )
+    headers.append("Connection: close")
+    logger.info("Returning %d %s response", status_code, reason)
+
+    # Join headers and add body if present
+    response = "\r\n".join(headers).encode("utf-8") + b"\r\n\r\n"
+    if body:
+        return response + body
+    return response
+```
+
+We pass this funcion a **status code** and an optional **body** and it will return a properly
+fromed response that we can send to the client.
+
+But where does the body come from for `/` and the `404 page`?
+
+```python title="simple_server.py" {}
+def handle_conn(conn: socket.socket) -> bytes:
+    """
+    Handles the request and returns an appropriate response.
+    """
+    logger.info("Handling the connection...")
+    request = b""
+    try:
+        while b"\r\n\r\n" not in request:
+            chunk = conn.recv(1024)
+            if not chunk:
+                break
+            request += chunk
+
+            if len(request) >= MAX_HEADER_SIZE:
+                return build_response(431)
+
+        logger.info("Received request:")
+        print(request.decode("utf-8"))
+        path = parse_request(request)
+
+        if not path:
+            return build_response(400)
+
+        file_path = safe_join(PUBLIC_DIR, path)
+
+        # if file_path is not a valid file
+        # return a 400 response with the content of 404.html as body
+        # if it is a valid resource build a 200 OK response
+        # with the content of the file as body
+        if not file_path or not os.path.isfile(file_path):
+            not_found_path = os.path.join(PUBLIC_DIR, "404.html")
+            try:
+                with open(not_found_path, "rb") as file:
+                    body = file.read()
+            except FileNotFoundError:
+                body = b"<h1>404 Not Found</h1>"
+            return build_response(404, body)
+
+        with open(file_path, "rb") as file:
+            body = file.read()
+        return build_response(200, body)
+
+    except socket.timeout:
+        return build_response(408)
+    except OSError:
+        return build_response(500)
+
+```
+
+We parse the request to get the path of the requested resource, and if the path is valid we get the body from `index.html`,
+if the requested resource doesn't exist we use the `404.html` content as body. We also build appropriate responses for all
+the other cases (timeout, server error, header content too long).
+
+## Bringing it all home
+
+```python title="simple_server.py"
+import os
+import socket
+
+from utils.logger import get_logger
+
+logger = get_logger("server")
+
+MAX_HEADER_SIZE = 8192  # 8KB
+PUBLIC_DIR = os.path.abspath("./public")
+
+
+def safe_join(public_dir: str, req_path: str) -> str | None:
+    """
+    Safely join paths preventing directory traversal
+    """
+
+    path = req_path.lstrip("/")
+
+    full_path = os.path.abspath(os.path.join(public_dir, path))
+
+    if not full_path.startswith(public_dir):
+        return None  # invalide path
+
+    return full_path
+
+
+def parse_request(request: bytes) -> str | None:
+    """
+    Extract the path from the HTTP request line.
+    """
+
+    try:
+        request_line = request.decode("utf-8").split("\r\n")[0]
+
+        method, path, _ = request_line.split()
+
+        if method != "GET":
+            return None  # For now we only support GET
+        if path == "/":
+            path = "/index.html"
+        return path
+
+    except (ValueError, IndexError):
+        return None
+
+
+def build_response(status_code: int, body: bytes | None = None) -> bytes:
+    """Build an HTTP/1.1 response string."""
+
+    reasons = {
+        200: "OK",
+        400: "Bad Request",
+        404: "Not Found",
+        408: "Request Timeout",
+        431: "Request Header Fields Too Large",
+        500: "Internal Server Error",
+    }
+    reason = reasons.get(status_code, "Unknown")
+
+    # Build headers list
+    headers = [f"HTTP/1.1 {status_code} {reason}"]
+
+    if body:
+        headers.extend(
+            [
+                f"Content-Length: {len(body)}",
+                "Content-Type: text/html",
+            ]
+        )
+    headers.append("Connection: close")
+    logger.info("Returning %d %s response", status_code, reason)
+
+    # Join headers and add body if present
+    response = "\r\n".join(headers).encode("utf-8") + b"\r\n\r\n"
+    if body:
+        return response + body
+    return response
+
+
+def handle_conn(conn: socket.socket) -> bytes:
+    """
+    Handles the request and returns an appropriate response.
+    """
+    logger.info("Handling the connection...")
+    request = b""
+    try:
+        while b"\r\n\r\n" not in request:
+            chunk = conn.recv(1024)
+            if not chunk:
+                break
+            request += chunk
+
+            if len(request) >= MAX_HEADER_SIZE:
+                return build_response(431)
+
+        logger.info("Received request:")
+        print(request.decode("utf-8"))
+        path = parse_request(request)
+
+        if not path:
+            return build_response(400)
+
+        file_path = safe_join(PUBLIC_DIR, path)
+
+        # if file_path is not a valid file
+        # return a 400 response with the content of 404.html as body
+        # if it is a valid resource build a 200 OK response
+        # with the content of the file as body
+        if not file_path or not os.path.isfile(file_path):
+            not_found_path = os.path.join(PUBLIC_DIR, "404.html")
+            try:
+                with open(not_found_path, "rb") as file:
+                    body = file.read()
+            except FileNotFoundError:
+                body = b"<h1>404 Not Found</h1>"
+            return build_response(404, body)
+
+        with open(file_path, "rb") as file:
+            body = file.read()
+        return build_response(200, body)
+
+    except socket.timeout:
+        return build_response(408)
+    except OSError:
+        return build_response(500)
+
+
+def start_server(host: str = "", port: int = 35555):
+    """
+    Starts a simple TCP socket listening for connection on a port.
+    Receives a message and sends it back.
+    """
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as my_server:
+        my_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            logger.info("Starting server...")
+            my_server.bind((host, port))
+            my_server.listen()
+            logger.info("Listening on port: %d", port)
+
+            while True:
+                conn, addr = my_server.accept()
+                with conn:
+                    conn.settimeout(5)
+                    logger.info("Accepted connection from: %s", addr)
+                    response = handle_conn(conn)
+
+                    conn.sendall(response)
+
+        except KeyboardInterrupt:
+            logger.error("Server closed by user.")
+        except OSError as e:
+            logger.error("Server error: %s", e)
+
+
+if __name__ == "__main__":
+    start_server()
+```
+
+```python title="simple_client.py" {8}
+import socket
+
+from utils.logger import get_logger
+
+logger = get_logger("client")
+
+REQUEST_OK = "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
+REQUEST_404 = "GET /not_existant HTTP/1.1\r\nHost: localhost\r\n\r\n"
+REQUEST_TIMEOUT = "GET / HTTP/1.1"
+REQUEST_MAX_SIZE = "Hello world" * 1000
+
+
+def start_client(
+    host: str = "localhost", port: int = 35555, message: str = "Hello, world!"
+):
+    """
+    Create a simple socket client that sends a
+    GET request to a web server message to a server
+    and reads the response.
+    """
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+        try:
+            logger.info("Connecting...")
+            client.connect((host, port))
+            logger.info("Connected to server at %s:%d", host, port)
+
+            logger.info("Sending:")
+            print(message)
+            client.sendall(message.encode("utf-8"))
+
+            buffer = b""
+            while b"\r\n\r\n" not in buffer:
+                chunk = client.recv(4096)
+                buffer += chunk
+
+            headers, body = buffer.split(b"\r\n\r\n", 1)
+            headers = headers.decode("utf-8").split("\r\n")
+
+            body_length: int = 0
+            for h in headers:
+                if h.lower().startswith("content-length:"):
+                    body_length = int(h.split(":", 1)[1].strip())
+                print(h)
+
+            while len(body) < body_length:
+                chunk = client.recv(1024)
+                body += chunk
+
+            print(body.decode("utf-8"))
+        except ConnectionRefusedError:
+            logger.error("Connection refused. Make sure the server is running.")
+        except OSError as e:
+            logger.error("Client error: %s", e)
+
+
+if __name__ == "__main__":
+    start_client(message=REQUEST_404)
+```
+
+You can even run the server and connect from your browser:
+
+```bash
+❯ uv run -m simple_server.py
+23-09-2025 23:01:33 - INFO - server - Starting server...
+23-09-2025 23:01:33 - INFO - server - Listening on port: 35555
+23-09-2025 23:01:47 - INFO - server - Accepted connection from: ('127.0.0.1', 35676)
+23-09-2025 23:01:47 - INFO - server - Handling the connection...
+23-09-2025 23:01:47 - INFO - server - Received request:
+GET / HTTP/1.1
+Host: localhost:35555
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br, zstd
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: none
+Sec-Fetch-User: ?1
+Priority: u=0, i
+
+
+23-09-2025 23:01:47 - INFO - server - Returning 200 OK response
+```
+
+![index.html](@/assets/images/sockets2_index.png)
+
+And if firefox requests a non existing page:
+
+```bash
+23-09-2025 23:12:29 - INFO - server - Accepted connection from: ('127.0.0.1', 38780)
+23-09-2025 23:12:29 - INFO - server - Handling the connection...
+23-09-2025 23:12:29 - INFO - server - Received request:
+GET /nonexisting HTTP/1.1
+Host: localhost:35555
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:143.0) Gecko/20100101 Firefox/143.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br, zstd
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: none
+Sec-Fetch-User: ?1
+Priority: u=0, i
+
+
+23-09-2025 23:12:29 - INFO - server - Returning 404 Not Found response
+```
+
+![404.html](@/assets/images/sockets2_404.png)
+
+The `Return to homepage` link works too.
+
+Sure our code could use a good refactor, to be made more pythonic and especially
+some **proper testing**, but we have come quite a long way.
+
+## Conclusion
+
+We stared from basic sockets and we ended up having a very primitive but "working"
+`HTTP sever/client` implementation.
+
+In the next part we will refactor our code and focus on giving our server the ability to serve multiple clients at the same time. Very exciting!
+
+I hope you enjoyed our journey so far. Don't forget to play around with the code,
+maybe break it a little (or a lot), and especially, have some fun!
 
