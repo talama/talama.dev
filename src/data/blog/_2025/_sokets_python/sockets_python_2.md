@@ -1,7 +1,7 @@
 ---
 title: Understanding sockets with Python - Part 2
 author: Luca Salomoni
-date: 2025-09-13T19:00:25.283Z
+date: 2025-09-24T19:13:34.861Z
 featured: true
 draft: false
 categories:
@@ -15,7 +15,7 @@ description: >-
   have a client that can make a valid HTTP request to a web server and process
   the response.
 ---
-This is the second part in a serie of posts where we'll explore what sockets are
+This is the second part in a series of posts where we'll explore what sockets are
 and how we can use them to communicate over a network, by writing some simple client/server code in Python.
 
 At the end of the post we will have a
@@ -36,7 +36,7 @@ But what does a client do? It:
 - **Closes the connection**
 
 In our case we know that the server address will be **(127.0.0.1, 35555)**,
-but if we'd use an **hostnanme**, `socket.connect((hostname, port))` would perform a **DNS lookup** for us.
+but if we'd use a **hostname**, `socket.connect((hostname, port))` would perform a **DNS lookup** for us.
 
 We can also use `socket.getaddrinfo(host, port, family=AF_UNSPEC, type=0, proto=0, flags=0)`
 to "translate" the **host/port** argument into a sequence of 5-tuples that contains all the necessary arguments to create a socket connected to that service.
@@ -68,7 +68,7 @@ for res in results:
         print(f"Family: {socket.AddressFamily(family).name}")
         print(f"Type: {socket.SocketKind(sock_type).name}")
         print(f"Protocol: {proto}")
-        print(f"Canoname: {canonname if canonname else '-'}")
+        print(f"Canonname: {canonname if canonname else '-'}")
         print("-" * 40)
 ```
 
@@ -134,7 +134,7 @@ def start_client(
 
         except ConnectionRefusedError:
             logger.error("Connection refused.")
-        except socket.error as e:
+        except OSError as e:
             logger.error("Client error: %s", e)
 
 
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     start_client(message="This is a test message from the client.")
 ```
 
-We create a scoket with the same `socket family` (**AF_INET**) and the same `socket type` (**SOCK_STREAM**) as the server,
+We create a socket with the same `socket family` (**AF_INET**) and the same `socket type` (**SOCK_STREAM**) as the server,
 then we `connect()` to the server address **(host, port)**.
 
 Now if we run the server and then try to connect with the client while the server is listening:
@@ -178,11 +178,11 @@ Now if we run the server and then try to connect with the client while the serve
 So now we have a working, albeit **very simple**, client/server pair built using the socket API.
 
 Both client and server request the OS a socket with the same **family/type**, the server binds to an address and listens, while the client connects.
-They then procede to **send/recv** data. Making sense of what the data means, and how to process it, is up the developer (you).
+They then proceed to **send/recv** data. Making sense of what the data means, and how to process it, is up to the developer (you).
 
 ## (Miss)Communication Breakdown
 
-To show you why `protocols` (rules that establish how the communication should happen) are so important, and also to show you how the socket API only cares about connecting compatible end points, we can do a little experiment.
+To show you why `protocols` (rules that establish how the communication should happen) are so important, and also to show you how the socket API only cares about connecting compatible endpoints, we can do a little experiment.
 
 Our simple client creates a **TCP/IP** socket. Now we happen to know that **HTTP** is an application protocol that also uses **TCP** at the transport layer, and **IP** at the network layer.
 So what if we use our client to connect to a web server like the one running this blog?
@@ -238,9 +238,8 @@ CF-RAY: -
 As you can see the connection part of the interaction between the server and the client works just fine.
 (Notice also how `client.connect()` does the **DNS lookup** of the hostname for us).
 
-But then we send a message that the web server doesn't know how to interpret, so it answers with a bad request.
-
-Some servers will answer differently, but most of the times you will either get a `400 Bad Request`,
+But then we send a message that the web server doesn't know how to interpret, so it responds with a `400 Bad Request` error.
+/Some servers will answer differently, but most of the times you will either get a `400 Bad Request`,
 or your client will hang until it gets `408 Request Timeout` from the server.
 
 This is what you get if you try to connect to (**example.org, 80**)
@@ -271,7 +270,7 @@ Reference&#32;&#35;2&#46;85f6d517&#46;1758224003&#46;0
 
 In both instances the TCP handshake and the packet delivery over IP succeeded, the failure was entirely at the **application layer**.
 
-So what if we thought the client to speak HTTP, even just a little?
+So what if we taught the client to speak HTTP, even just a little?
 
 ## The client learns some HTTP
 
@@ -283,12 +282,12 @@ Currently HTTP/1.1 is defined by:
 
 - [RFC 9112 - HTTP/1.1](https://www.rfc-editor.org/rfc/rfc9112.html)
 - [RFC 9110 - HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110.html)
-- [RFC 9111 - HTTP Caching](https://www.rfc-editor.org/rfc/rfc9110.html)
+- [RFC 9111 - HTTP Caching](https://www.rfc-editor.org/rfc/rfc9111.html)
 
-Not the easiest read, but very interesting. Fortunately we only need **very** small subset of the
+Not the easiest read, but very interesting. Fortunately we only need a **very** small subset of the
 information contained there (at least for now). And we are not going to reference the caching RFC at all.
 
-The syntax of the messages is defined in **RFC 9112**, while the **semantics of methods, status codes, and header files**
+The syntax of the messages is defined in **RFC 9112**, while the **semantics of methods, status codes, and header fields**
 are defined separately in **RFC 9110**.
 
 At its simplest, a request has this structure ( [RFC 9112, Section 2.1](https://www.rfc-editor.org/rfc/rfc9112.html#name-message-format) ):
@@ -300,7 +299,7 @@ At its simplest, a request has this structure ( [RFC 9112, Section 2.1](https://
                    [ message-body ]
 ```
 
-where `start-line` can be either a `request-line` or a `status-line` depending if this is a request or a response,
+where `start-line` can be either a `request-line` or a `status-line` depending on whether this is a request or a response,
 `*( field-line CRLF )` is **zero or more** header field lines, `CRLF` is an empty line (Carriage return + Line feed `\r\n`) and
 `[message-body]` is an **optional** message body.
 
@@ -380,7 +379,7 @@ def start_client(
 
         except ConnectionRefusedError:
             logger.error("Connection refused. Make sure the server is running.")
-        except socket.error as e:
+        except OSError as e:
             logger.error("Client error: %s", e)
 
 
@@ -436,7 +435,7 @@ X-N: S
         color: #38
 ```
 
-Success!! (kinda).
+Success!! (kind of).
 
 We received a meaningful response because we made meaningful request.
 Too bad we only got the first **1024** bytes of it...
@@ -446,7 +445,7 @@ so we know the server is going to send a response and then close the connection.
 So we can simply just read **chunks** of **bufsize** until the server closes the connection and
 sends **0 bytes** (`b""`).
 
-Its not perfect, but it works in this case and its easy to implement:
+It's not perfect, but it works in this case and it's easy to implement:
 
 ```python {27-34}
 // file: simple_client.py
@@ -488,7 +487,7 @@ def start_client(
 
         except ConnectionRefusedError:
             logger.error("Connection refused. Make sure the server is running.")
-        except socket.error as e:
+        except OSError as e:
             logger.error("Client error: %s", e)
 
 
@@ -575,7 +574,7 @@ But... What if we didn't send the `Connection: close` header?
 Opening a new TCP connection for every request is expensive (3-way handshake, slow start, TLS handshake if HTTPS), so for example we might
 want to request **/index.html**, **/style.css**, **/main.js** all over the same connection if the server supports it.
 
-Notice also that there is a bug in our current implentation. If we remove the `Connection: close` header, our `While: True` never ends:
+Notice also that there is a bug in our current implementation. If we remove the `Connection: close` header, our `While: True` never ends:
 
 ```python {3-5}
             res = b""
@@ -588,7 +587,7 @@ Notice also that there is a bug in our current implentation. If we remove the `C
 ```
 
 Remember that `recv()` **is blocking** meaning it will sit there waiting for the server to say something.
-The loop only breaks when the servers closes the connection and send **0 bytes** (an empty `b""`), so
+The loop only breaks when the server closes the connection and sends **0 bytes** (an empty `b""`), so
 it would potentially never end.
 
 In the case of `example.org` the loop will eventually end when the server times out and closes the connection, the client
@@ -641,7 +640,7 @@ def start_client(
                 chunk = client.recv(1024)
                 buffer += chunk
 
-            # Depending on where the in the buffer was "\r\n\r\n"
+            # Depending on where in the buffer was "\r\n\r\n"
             # when we exit the loop we probably have read some of the body
             # already in the buffer, so we assign it to body
             headers, body = buffer.split(b"\r\n\r\n", 1)
@@ -682,7 +681,7 @@ Content-Length: 1256
 Connection: keep-alive
 ```
 
-Notice, again that the choice of **1024** as `bufsize` is a arbitrary number i picked for this tutorial, and that it's the **max** amount of data we can receive at once,
+Notice, again that the choice of **1024** as `bufsize` is an arbitrary number I picked for this tutorial, and that it's the **max** amount of data we can receive at once,
 but we could also be receiving **less** than `bufsize`.
 It's small enough to show a couple of `recv()` iterations, but big enough to avoid a ton of tiny reads.
 
@@ -818,10 +817,10 @@ Great! We finally managed to properly connect to a web server, send a valid **GE
 
 Unfortunately if we try to connect to other web servers we are most likely going to encounter a few problems.
 
-First of all, we are not supporting `HTTPS` and almost all public websites enforce it nowadays (and if a website doesnt you probably shouldn't trust it).
+First of all, we are not supporting `HTTPS` and almost all public websites enforce it nowadays (and if a website doesn't, you probably shouldn't trust it).
 
 Second, determining the `body-length` is not as easy as it sounds because `Content-Length:` is not the only header that we would need to support,
-we should at least support `Transfer-Enconding: chunked`.
+we should at least support `Transfer-Encoding: chunked`.
 
 As always we must refer to our good ol' friend [RFC 9112, Section 6.3](https://www.rfc-editor.org/rfc/rfc9112.html#name-message-body-length)
 where we can see that things are quite more complicated than we initially thought.
@@ -830,7 +829,7 @@ We might update our client in the next part of this series, but for now what if 
 
 ## The server learns some HTTP too
 
-We are going to modify our server to parse a well formed **HTTP request** and respond properly.
+We are going to modify our server to parse a well-formed **HTTP request** and respond properly.
 
 Remember from [RFC 9112, Section 2.1](https://www.rfc-editor.org/rfc/rfc9112.html#name-message-format) that:
 
@@ -841,7 +840,7 @@ Remember from [RFC 9112, Section 2.1](https://www.rfc-editor.org/rfc/rfc9112.htm
                    [ message-body ]
 ```
 
-And `start-line` in the case of a responst is a `status-line` [RFC 9112, Section 4](https://www.rfc-editor.org/rfc/rfc9112.html#name-status-line)
+And `start-line` in the case of a response is a `status-line` [RFC 9112, Section 4](https://www.rfc-editor.org/rfc/rfc9112.html#name-status-line)
 
 ```bash
  status-line = HTTP-version status-code [ reason-phrase ]
@@ -1105,7 +1104,7 @@ Hello World!
 
 Next we are going to send some basic valid **HTML** back to the client instead.
 We are going to parse the **GET** request (our server only supports those for now)
-and try to serve the requested resource **from disk**, if it doesnt exist we'll serve a **404** page.
+and try to serve the requested resource **from disk**, if it doesn't exist we'll serve a **404** page.
 
 I'm going to create a directory called **public/** from which I am going to serve:
 
@@ -1182,8 +1181,8 @@ and:
 ```
 
 We are also going to clean our code a little and split the code into multiple functions.
-If we plan to add more feature we should really start think at a proper refactor and especially
-to add **proper testing**, but we'll leave that for the next part in this serie.
+If we plan to add more features we should really start thinking about a proper refactor and especially
+to add **proper testing**, but we'll leave that for the next part in this series.
 
 ```python title="simple_server.py" {9-24}
 import os
@@ -1207,14 +1206,14 @@ def safe_join(public_dir: str, req_path: str) -> str | None:
     full_path = os.path.abspath(os.path.join(public_dir, path))
 
     if not full_path.startswith(public_dir):
-        return None  # invalide path
+        return None  # invalid path
 
     return full_path
 ```
 
 This is a function to safely join `public_dir` with the `resource path` from the request, so that it prevents
 directory traversal. The client could send a malicious request that would try to "escape" from the `public` directory and
-retrive something that the client should not have access to. (ie `GET /../../etc/passwd HTTP/1.1`).
+retrieve something that the client should not have access to. (ie `GET /../../etc/passwd HTTP/1.1`).
 
 ```python title="simple_server.py" {} showLineNumbers
 def parse_request(request: bytes) -> str | None:
@@ -1237,7 +1236,7 @@ def parse_request(request: bytes) -> str | None:
         return None
 ```
 
-This function takes a `GET request` (the only kind of rquest our server can handle so far)
+This function takes a `GET request` (the only kind of request our server can handle so far)
 and extract the path of the resource requested. Simple enough.
 
 ```python title="simple_server.py" {} showLineNumbers
@@ -1274,8 +1273,8 @@ def build_response(status_code: int, body: bytes | None = None) -> bytes:
     return response
 ```
 
-We pass this funcion a **status code** and an optional **body** and it will return a properly
-fromed response that we can send to the client.
+We pass this function a **status code** and an optional **body** and it will return a properly
+formed response that we can send to the client.
 
 But where does the body come from for `/` and the `404 page`?
 
@@ -1306,7 +1305,7 @@ def handle_conn(conn: socket.socket) -> bytes:
         file_path = safe_join(PUBLIC_DIR, path)
 
         # if file_path is not a valid file
-        # return a 400 response with the content of 404.html as body
+        # return a 404 response with the content of 404.html as body
         # if it is a valid resource build a 200 OK response
         # with the content of the file as body
         if not file_path or not os.path.isfile(file_path):
@@ -1460,13 +1459,9 @@ def handle_conn(conn: socket.socket) -> bytes:
     except socket.timeout:
         return build_response(408)
     except OSError:
-        return build_response(500)
-
-
 def start_server(host: str = "", port: int = 35555):
     """
-    Starts a simple TCP socket listening for connection on a port.
-    Receives a message and sends it back.
+    Starts a simple HTTP server that serves files from a public directory.
     """
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as my_server:
@@ -1530,7 +1525,7 @@ def start_client(
 
             buffer = b""
             while b"\r\n\r\n" not in buffer:
-                chunk = client.recv(4096)
+                chunk = client.recv(1024)
                 buffer += chunk
 
             headers, body = buffer.split(b"\r\n\r\n", 1)
@@ -1586,7 +1581,7 @@ Priority: u=0, i
 
 ![index.html](@/assets/images/sockets2_index.png)
 
-And if firefox requests a non existing page:
+And if Firefox requests a non-existing page:
 
 ```bash
 23-09-2025 23:12:29 - INFO - server - Accepted connection from: ('127.0.0.1', 38780)
@@ -1614,13 +1609,13 @@ Priority: u=0, i
 
 The `Return to homepage` link works too.
 
-Sure our code could use a good refactor, to be made more pythonic and especially
+Sure our code could use a good refactor, to be made more Pythonic and especially
 some **proper testing**, but we have come quite a long way.
 
 ## Conclusion
 
-We stared from basic sockets and we ended up having a very primitive but "working"
-`HTTP sever/client` implementation.
+We started from basic sockets and we ended up having a very primitive but "working"
+`HTTP server/client` implementation.
 
 In the next part we will refactor our code and focus on giving our server the ability to serve multiple clients at the same time. Very exciting!
 
